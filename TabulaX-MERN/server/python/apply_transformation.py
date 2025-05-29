@@ -1,0 +1,288 @@
+import os
+import json
+import pandas as pd
+import traceback
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage
+
+def log_error(message):
+    with open("error_log.txt", "a") as f:
+        f.write(f"{message}\n")
+
+def generate_general_transformation(source_series, target_series, new_input_series, llm, output_path="transformed_output.csv"):
+    """
+    Applies general transformation on new input values using:
+    1. A lookup table built from example source-target pairs
+    2. LLM inference for unseen inputs (returns only target value, e.g., CEO name)
+    Exports results to CSV with transformation provenance.
+    """
+    # Clear previous error logs
+    with open("error_log.txt", "w") as f:
+        f.write("Starting new general transformation\n")
+    
+    # Step 0: Create example mapping dictionary with normalization
+    examples_dict = {}
+    normalized_dict = {}
+    
+    # First, collect all valid pairs
+    valid_pairs = []
+    for s, t in zip(source_series, target_series):
+        if pd.notna(s) and pd.notna(t) and str(s).strip() and str(t).strip():
+            valid_pairs.append((str(s).strip(), str(t).strip()))
+    
+    log_error(f"Found {len(valid_pairs)} valid source-target pairs")
+    
+    # Build the dictionaries
+    for s, t in valid_pairs:
+        # Store original form
+        examples_dict[s] = t
+        # Store normalized form (lowercase)
+        normalized_dict[s.lower()] = t
+    
+    # Format pairs for prompt (use all pairs for better context)
+    pairs_formatted = [f'"{s}" -> "{t}"' for s, t in valid_pairs]
+    pairs_str = "\n".join(pairs_formatted)
+    
+    log_error(f"Created lookup table with {len(examples_dict)} entries")
+    
+    # Step 1: Identify the relationship type
+    # Use examples from the classification examples in classify_transformation.py
+    relationship_examples = """
+    Examples of relationships:
+    - "Einstein" -> "Scientist" = Person to Profession
+    - "Japan" -> "Tokyo" = Country to Capital City
+    - "Tesla" -> "Elon Musk" = Company to CEO
+    - "Whale" -> "Mammal" = Animal to Category
+    - "Python" -> "Programming Language" = Term to Type
+    - "Venus" -> "Planet" = Entity to Category
+    - "USD" -> "United States Dollar" = Currency Code to Full Name
+    """
+    
+    relationship_prompt = f"""
+    Given these mappings between source and target values:
+    {pairs_str}
+    
+    {relationship_examples}
+    
+    Identify the specific relationship between source and target.
+    Format your answer as: [Source Type] to [Target Type]
+    Be precise and specific about the nature of the relationship.
+    Only output the relationship, nothing else.
+    """
+    
+    try:
+        relationship_response = llm.invoke([HumanMessage(content=relationship_prompt)])
+        relationship_result = relationship_response.content.strip()
+        # Extract the relationship line (look for "to" pattern)
+        relationship_line = next((line.strip() for line in relationship_result.split('\n') if ' to ' in line.lower()), relationship_result)
+        log_error(f"Detected relationship: {relationship_line}")
+    except Exception as e:
+        log_error(f"Error detecting relationship: {str(e)}")
+        relationship_line = "Source to Target"
+    
+    # Step 2: Process new inputs
+    results = []
+    for idx, val in enumerate(new_input_series):
+        try:
+            if pd.isna(val) or val == '' or val is None:
+                results.append((val, "", "null"))
+                continue
+                
+            val_str = str(val).strip()
+            
+            # Try exact match first
+            if val_str in examples_dict:
+                results.append((val_str, examples_dict[val_str], "exact_match"))
+                continue
+                
+            # Try case-insensitive match
+            val_lower = val_str.lower()
+            if val_lower in normalized_dict:
+                results.append((val_str, normalized_dict[val_lower], "case_insensitive_match"))
+                continue
+            
+            # For LLM inference, prepare a focused prompt with relevant examples
+            inference_prompt = f"""
+            I need to transform "{val_str}" based on the relationship: {relationship_line}
+            
+            Here are some examples of this transformation:
+            {pairs_str}
+            
+            What would be the correct output for "{val_str}"?
+            Provide ONLY the result value, no explanation or additional text.
+            """
+            
+            llm_response = llm.invoke([HumanMessage(content=inference_prompt)])
+            inferred_result = llm_response.content.strip()
+            
+            # Clean up the result (remove quotes, extra spaces, etc.)
+            inferred_result = inferred_result.strip('"').strip("'").strip()
+            # Remove any explanations that might be included
+            if "\n" in inferred_result:
+                inferred_result = inferred_result.split("\n")[0].strip()
+            
+            results.append((val_str, inferred_result, "llm_inference"))
+            
+            # Log progress for long lists
+            if idx % 10 == 0 and idx > 0:
+                log_error(f"Processed {idx}/{len(new_input_series)} inputs")
+                
+        except Exception as e:
+            log_error(f"Error processing input '{val}': {str(e)}")
+            results.append((val, f"Error: {str(e)}", "error"))
+    
+    # Create DataFrame with results
+    df_output = pd.DataFrame(results, columns=["Input", "Output", "Provenance"])
+    
+    # Add metadata
+    df_output['Relationship'] = relationship_line
+    
+    # Save to CSV
+    df_output.to_csv(output_path, index=False)
+    
+    # Log summary
+    provenance_counts = df_output['Provenance'].value_counts().to_dict()
+    log_error(f"Transformation complete. Results by source: {provenance_counts}")
+    
+    return output_path
+
+def apply_transformation_main(data_info):
+    try:
+        data = data_info['data']
+        column_to_transform = data_info['column']
+        transformation_type = data_info.get('transformation_type', 'General')
+        code_file_content = data_info.get('code_file_content', None)
+
+        # Validate data
+        if not data or not isinstance(data, list):
+            raise ValueError("Data must be a non-empty list")
+
+        # Convert to pandas DataFrame
+        df = pd.DataFrame(data)
+
+        # Check if column exists in DataFrame
+        if column_to_transform not in df.columns:
+            raise ValueError(f"Column '{column_to_transform}' not found in data")
+
+        log_error(f"Data loaded successfully with {len(df)} rows")
+
+        # Get Google API key from environment or .env file
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            try:
+                env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+                if os.path.exists(env_path):
+                    with open(env_path, 'r') as env_file:
+                        for line in env_file:
+                            if line.startswith('GOOGLE_API_KEY='):
+                                api_key = line.strip().split('=', 1)[1].strip()
+                                break
+            except Exception as e:
+                log_error(f"Error reading API key from .env file: {str(e)}")
+        if not api_key:
+            api_key = "AIzaSyBNFQX9eI7V6TmeDuuuqQ5JhxFpgZj19BY"
+
+        # Initialize Gemini model for General transformations
+        llm = None
+        if transformation_type == "General":
+            llm = ChatGoogleGenerativeAI(
+                model="gemini-1.5-flash",
+                temperature=0.7,
+                google_api_key=api_key
+            )
+
+        # Apply transformation based on type
+        if transformation_type == "General":
+            if llm is None:
+                raise ValueError("LLM could not be initialized for General transformation.")
+                
+            log_error(f"Applying General transformation to {column_to_transform}")
+            
+            # Check if we have enough data for examples
+            if len(df) < 2:
+                raise ValueError("Need at least 2 rows of data for General transformation (1 for example, 1 for transformation)")
+            
+            # Determine if we have a target column or if we're using the same data for examples and transformation
+            target_column = None
+            possible_targets = [col for col in df.columns if col != column_to_transform]
+            
+            if possible_targets:
+                # We have a separate target column
+                target_column = possible_targets[0]
+                log_error(f"Using column '{target_column}' as target for examples")
+                
+                # Use first N rows as examples, rest as new inputs
+                example_size = min(10, len(df) - 1)  # Leave at least 1 row for transformation
+                source_series = df[column_to_transform][:example_size]
+                target_series = df[target_column][:example_size]
+                new_input_series = df[column_to_transform][example_size:]
+            else:
+                # No target column - assume all data is for examples, and we'll transform the same data
+                log_error("No separate target column found. Using all data as examples and transforming the same data.")
+                example_size = len(df)
+                source_series = df[column_to_transform]
+                target_series = df[column_to_transform]  # Same as source for placeholder
+                new_input_series = df[column_to_transform]  # Transform the same data
+            
+            # Generate the transformation
+            output_path = "transformed_output.csv"
+            generate_general_transformation(source_series, target_series, new_input_series, llm, output_path=output_path)
+            
+            try:
+                # Read the output CSV
+                df_output = pd.read_csv(output_path)
+                log_error(f"Successfully generated output with {len(df_output)} rows")
+                
+                # Create result DataFrame
+                if possible_targets:
+                    # We had separate target column - merge results
+                    df_result = pd.concat([
+                        df.iloc[:example_size].assign(Output=target_series.values, Provenance="example"),
+                        df.iloc[example_size:].assign(Output=df_output["Output"].values, Provenance=df_output["Provenance"].values)
+                    ], ignore_index=True)
+                else:
+                    # No separate target - just use the transformation results
+                    df_result = df.copy()
+                    df_result['Output'] = df_output["Output"].values
+                    df_result['Provenance'] = df_output["Provenance"].values
+                    
+                # Add relationship information if available
+                if 'Relationship' in df_output.columns:
+                    relationship = df_output['Relationship'].iloc[0] if len(df_output) > 0 else "Unknown"
+                    df_result['Relationship'] = relationship
+                    log_error(f"Detected relationship: {relationship}")
+                
+                result = {
+                    "transformed_data": df_result.to_dict(orient='records')
+                }
+                return result
+                
+            except Exception as e:
+                log_error(f"Error processing transformation output: {str(e)}")
+                raise ValueError(f"Error processing transformation output: {str(e)}")
+
+        else:
+            # For other transformations, load and execute the transformation code
+            if code_file_content:
+                exec_globals = {}
+                exec(code_file_content, exec_globals)
+                transform_func = exec_globals.get('transform')
+                if not transform_func:
+                    raise ValueError("Transformation code must define a 'transform' function")
+                df[f'transformed_{column_to_transform}'] = df[column_to_transform].apply(transform_func)
+            else:
+                # No transformation code provided
+                df[f'transformed_{column_to_transform}'] = df[column_to_transform]
+
+            # Output result as JSON
+            result = {
+                "transformed_data": df.to_dict(orient='records')
+            }
+            return result
+    except Exception as e:
+        error_details = traceback.format_exc()
+        log_error(f"Error in apply_transformation.py: {str(e)}\n{error_details}")
+        return {
+            "error": True,
+            "message": str(e)
+        }

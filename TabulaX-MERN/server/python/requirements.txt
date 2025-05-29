@@ -1,0 +1,6 @@
+pandas
+numpy
+langchain
+langchain_google_genai
+scipy
+Levenshtein

@@ -1,0 +1,10 @@
+Error in apply_transformation.py: Expected 3 arguments, got 1
+Traceback (most recent call last):
+  File "c:\Users\LENOVO\kmit\TabulaX-final\TabulaX-MERN\server\python\apply_transformation.py", line 19, in <module>
+    raise ValueError(f"Expected 3 arguments, got {len(sys.argv)-1}")
+ValueError: Expected 3 arguments, got 1
+
+Arguments received: c:\Users\LENOVO\kmit\TabulaX-final\TabulaX-MERN\sample_data.json, Custom, c:\Users\LENOVO\kmit\TabulaX-final\TabulaX-MERN\sample_transform.py
+Data loaded successfully with 3 rows
+API Key status: Available
+Classification result: String-based
