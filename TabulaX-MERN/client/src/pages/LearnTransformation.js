@@ -19,7 +19,15 @@ import {
   StepLabel,
   Divider,
   Card,
-  CardContent
+  CardContent,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  List,
+  ListItem,
+  ListItemText
 } from '@mui/material';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
@@ -642,35 +650,223 @@ const LearnTransformation = () => {
       case 0: // Provide Data
         return (
           <Box>
-
-          {sourceInputType === 'mongodb' && (
+            {/* Source Type Selection */}
             <Paper sx={{ p: 2, mb: 2 }}>
-              <Typography variant="subtitle1" gutterBottom>MongoDB Source Details</Typography>
-              <TextField
-                label="MongoDB URI"
-                fullWidth
-                value={mongoDBSourceURI}
-                onChange={(e) => setMongoDBSourceURI(e.target.value)}
-                sx={{ mb: 1 }}
-              />
-              <TextField
-                label="Collection Name"
-                value={mongoDBSourceCollection}
-                onChange={(e) => setMongoDBSourceCollection(e.target.value)}
-                sx={{ mb: 1 }}
-              />
-              <Button 
-                variant="contained" 
-                onClick={() => handleDBFetch('source', 'mongodb')}
-                disabled={isSourceDBLoading || !mongoDBSourceURI || !mongoDBSourceCollection}
-                title={!mongoDBSourceURI || !mongoDBSourceCollection ? 'Please fill both URI and Collection Name' : ''}
-              >
-                {isSourceDBLoading ? <CircularProgress size={24} /> : 'Fetch Source MongoDB Data'}
-              </Button>
-              {sourceDBError && <Alert severity="error" sx={{ mt: 1 }}>{sourceDBError}</Alert>}
+              <Typography variant="subtitle1" gutterBottom>Source Data Type</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel id="source-input-type-label">Source Type</InputLabel>
+                    <Select
+                      labelId="source-input-type-label"
+                      id="source-input-type"
+                      value={sourceInputType}
+                      label="Source Type"
+                      onChange={handleSourceInputTypeChange}
+                    >
+                      <MenuItem value="file">File Upload (CSV/Excel)</MenuItem>
+                      <MenuItem value="mongodb">MongoDB</MenuItem>
+                      <MenuItem value="mysql">MySQL</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
             </Paper>
-          )}
 
+            {/* Source MongoDB Options */}
+            {sourceInputType === 'mongodb' && (
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Typography variant="subtitle1" gutterBottom>MongoDB Source Details</Typography>
+                <TextField
+                  label="MongoDB URI"
+                  fullWidth
+                  value={mongoDBSourceURI}
+                  onChange={(e) => setMongoDBSourceURI(e.target.value)}
+                  sx={{ mb: 1 }}
+                  placeholder="mongodb://username:password@host:port/database"
+                  helperText="Example: mongodb://localhost:27017/mydb"
+                />
+                <TextField
+                  label="Collection Name"
+                  fullWidth
+                  value={mongoDBSourceCollection}
+                  onChange={(e) => setMongoDBSourceCollection(e.target.value)}
+                  sx={{ mb: 1 }}
+                  placeholder="collection_name"
+                />
+                <Button 
+                  variant="contained" 
+                  onClick={() => handleDBFetch('source', 'mongodb')}
+                  disabled={isSourceDBLoading || !mongoDBSourceURI || !mongoDBSourceCollection}
+                  title={!mongoDBSourceURI || !mongoDBSourceCollection ? 'Please fill both URI and Collection Name' : ''}
+                  sx={{ mt: 1 }}
+                >
+                  {isSourceDBLoading ? <CircularProgress size={24} /> : 'Fetch Source MongoDB Data'}
+                </Button>
+                {sourceDBError && <Alert severity="error" sx={{ mt: 1 }}>{sourceDBError}</Alert>}
+              </Paper>
+            )}
+            
+            {/* Source MySQL Options */}
+            {sourceInputType === 'mysql' && (
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Typography variant="subtitle1" gutterBottom>MySQL Source Details</Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      label="Host"
+                      fullWidth
+                      value={mySQLSourceHost}
+                      onChange={(e) => setMySQLSourceHost(e.target.value)}
+                      sx={{ mb: 1 }}
+                      placeholder="localhost"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      label="Port"
+                      fullWidth
+                      value={mySQLSourcePort}
+                      onChange={(e) => setMySQLSourcePort(e.target.value)}
+                      sx={{ mb: 1 }}
+                      placeholder="3306"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      label="Database"
+                      fullWidth
+                      value={mySQLSourceDatabase}
+                      onChange={(e) => setMySQLSourceDatabase(e.target.value)}
+                      sx={{ mb: 1 }}
+                      placeholder="mydatabase"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      label="Table"
+                      fullWidth
+                      value={mySQLSourceTable}
+                      onChange={(e) => setMySQLSourceTable(e.target.value)}
+                      sx={{ mb: 1 }}
+                      placeholder="mytable"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      label="Username"
+                      fullWidth
+                      value={mySQLSourceUser}
+                      onChange={(e) => setMySQLSourceUser(e.target.value)}
+                      sx={{ mb: 1 }}
+                      placeholder="root"
+                    />
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      label="Password"
+                      fullWidth
+                      type="password"
+                      value={mySQLSourcePassword}
+                      onChange={(e) => setMySQLSourcePassword(e.target.value)}
+                      sx={{ mb: 1 }}
+                    />
+                  </Grid>
+                </Grid>
+                <Button 
+                  variant="contained" 
+                  onClick={() => handleDBFetch('source', 'mysql')}
+                  disabled={isSourceDBLoading || !mySQLSourceHost || !mySQLSourceUser || !mySQLSourceDatabase || !mySQLSourceTable}
+                  title={!mySQLSourceHost || !mySQLSourceUser || !mySQLSourceDatabase || !mySQLSourceTable ? 'Please fill all required fields' : ''}
+                  sx={{ mt: 1 }}
+                >
+                  {isSourceDBLoading ? <CircularProgress size={24} /> : 'Fetch Source MySQL Data'}
+                </Button>
+                {sourceDBError && <Alert severity="error" sx={{ mt: 1 }}>{sourceDBError}</Alert>}
+              </Paper>
+            )}
+
+            {/* Source File Upload */}
+            {sourceInputType === 'file' && (
+              <Paper
+                {...sourceDropzone.getRootProps()}
+                sx={{
+                  p: 3,
+                  mb: 2,
+                  border: '2px dashed #cccccc',
+                  borderRadius: 2,
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    borderColor: 'primary.main',
+                  },
+                }}
+              >
+                <input {...sourceDropzone.getInputProps()} />
+                {sourceFile ? (
+                  <Typography>{sourceFile.name}</Typography>
+                ) : (
+                  <Typography>
+                    Drag & drop source CSV/Excel file, or click to select
+                  </Typography>
+                )}
+              </Paper>
+            )}
+
+          {/* Source Data Preview */}
+          {(sourceInputType === 'file' && sourceData.length > 0) || ((sourceInputType === 'mongodb' || sourceInputType === 'mysql') && sourceDBData.length > 0) ? (
+            <Paper sx={{ p: 2, maxHeight: 300, overflow: 'auto', mb:2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                Source Data Preview (First 5 rows)
+              </Typography>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    {(sourceInputType === 'file' ? sourceColumns : sourceDBColumns).map((col) => (
+                      <TableCell key={col}>{col}</TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(sourceInputType === 'file' ? sourceData : sourceDBData).slice(0, 5).map((row, idx) => (
+                    <TableRow key={idx}>
+                      {(sourceInputType === 'file' ? sourceColumns : sourceDBColumns).map((col) => (
+                        <TableCell key={col}>{row[col] !== undefined ? String(row[col]) : ''}</TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {((sourceInputType === 'file' && sourceColumns.length === 0) || ((sourceInputType === 'mongodb' || sourceInputType === 'mysql') && sourceDBColumns.length === 0)) && (
+                <Typography variant="body2" color="textSecondary">No columns to display.</Typography>
+              )}
+            </Paper>
+          ) : null}
+
+          {/* Target Type Selection */}
+          <Paper sx={{ p: 2, mb: 2 }}>
+            <Typography variant="subtitle1" gutterBottom>Target Data Type</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel id="target-input-type-label">Target Type</InputLabel>
+                  <Select
+                    labelId="target-input-type-label"
+                    id="target-input-type"
+                    value={targetInputType}
+                    label="Target Type"
+                    onChange={handleTargetInputTypeChange}
+                  >
+                    <MenuItem value="file">File Upload (CSV/Excel)</MenuItem>
+                    <MenuItem value="mongodb">MongoDB</MenuItem>
+                    <MenuItem value="mysql">MySQL</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Paper>
+          
+          {/* Target File Upload */}
           {targetInputType === 'file' && (
             <Paper
               {...targetDropzone.getRootProps()}
@@ -694,6 +890,121 @@ const LearnTransformation = () => {
                   Drag & drop target CSV/Excel file, or click to select
                 </Typography>
               )}
+            </Paper>
+          )}
+
+
+
+
+          
+          {targetInputType === 'mongodb' && (
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>MongoDB Target Details</Typography>
+              <TextField
+                label="MongoDB URI"
+                fullWidth
+                value={mongoDBTargetURI}
+                onChange={(e) => setMongoDBTargetURI(e.target.value)}
+                sx={{ mb: 1 }}
+                placeholder="mongodb://username:password@host:port/database"
+                helperText="Example: mongodb://localhost:27017/mydb"
+              />
+              <TextField
+                label="Collection Name"
+                fullWidth
+                value={mongoDBTargetCollection}
+                onChange={(e) => setMongoDBTargetCollection(e.target.value)}
+                sx={{ mb: 1 }}
+                placeholder="collection_name"
+              />
+              <Button 
+                variant="contained" 
+                onClick={() => handleDBFetch('target', 'mongodb')}
+                disabled={isTargetDBLoading || !mongoDBTargetURI || !mongoDBTargetCollection}
+                title={!mongoDBTargetURI || !mongoDBTargetCollection ? 'Please fill both URI and Collection Name' : ''}
+                sx={{ mt: 1 }}
+              >
+                {isTargetDBLoading ? <CircularProgress size={24} /> : 'Fetch Target MongoDB Data'}
+              </Button>
+              {targetDBError && <Alert severity="error" sx={{ mt: 1 }}>{targetDBError}</Alert>}
+            </Paper>
+          )}
+          
+          {targetInputType === 'mysql' && (
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <Typography variant="subtitle1" gutterBottom>MySQL Target Details</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Host"
+                    fullWidth
+                    value={mySQLTargetHost}
+                    onChange={(e) => setMySQLTargetHost(e.target.value)}
+                    sx={{ mb: 1 }}
+                    placeholder="localhost"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Port"
+                    fullWidth
+                    value={mySQLTargetPort}
+                    onChange={(e) => setMySQLTargetPort(e.target.value)}
+                    sx={{ mb: 1 }}
+                    placeholder="3306"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Database"
+                    fullWidth
+                    value={mySQLTargetDatabase}
+                    onChange={(e) => setMySQLTargetDatabase(e.target.value)}
+                    sx={{ mb: 1 }}
+                    placeholder="mydatabase"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Table"
+                    fullWidth
+                    value={mySQLTargetTable}
+                    onChange={(e) => setMySQLTargetTable(e.target.value)}
+                    sx={{ mb: 1 }}
+                    placeholder="mytable"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Username"
+                    fullWidth
+                    value={mySQLTargetUser}
+                    onChange={(e) => setMySQLTargetUser(e.target.value)}
+                    sx={{ mb: 1 }}
+                    placeholder="root"
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Password"
+                    fullWidth
+                    type="password"
+                    value={mySQLTargetPassword}
+                    onChange={(e) => setMySQLTargetPassword(e.target.value)}
+                    sx={{ mb: 1 }}
+                  />
+                </Grid>
+              </Grid>
+              <Button 
+                variant="contained" 
+                onClick={() => handleDBFetch('target', 'mysql')}
+                disabled={isTargetDBLoading || !mySQLTargetHost || !mySQLTargetUser || !mySQLTargetDatabase || !mySQLTargetTable}
+                title={!mySQLTargetHost || !mySQLTargetUser || !mySQLTargetDatabase || !mySQLTargetTable ? 'Please fill all required fields' : ''}
+                sx={{ mt: 1 }}
+              >
+                {isTargetDBLoading ? <CircularProgress size={24} /> : 'Fetch Target MySQL Data'}
+              </Button>
+              {targetDBError && <Alert severity="error" sx={{ mt: 1 }}>{targetDBError}</Alert>}
             </Paper>
           )}
 
@@ -725,10 +1036,18 @@ const LearnTransformation = () => {
               )}
             </Paper>
           ) : null}
-
-          {sourceInputType === 'file' && (
+          </Box>
+        );
+        
+      case 1: // Select Columns
+        return (
+          <Box>
             <Paper sx={{ p: 2, mb: 2 }}>
-              <Typography variant="subtitle1" gutterBottom>Source File Details</Typography>
+              <Typography variant="h6" gutterBottom>Select Columns for Transformation</Typography>
+              <Typography variant="body2" paragraph>
+                Select the source column that you want to transform and the target column that represents the desired output.
+              </Typography>
+              
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
                   <FormControl fullWidth>
@@ -772,57 +1091,41 @@ const LearnTransformation = () => {
                 </Grid>
               </Grid>
             </Paper>
-          )}
-
-          {(sourceInputType === 'mongodb' || sourceInputType === 'mysql') && (
-            <Paper sx={{ p: 2, mb: 2 }}>
-              <Typography variant="subtitle1" gutterBottom>Database Column Selection</Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel id="source-db-column-label">Source Column</InputLabel>
-                    <Select
-                      labelId="source-db-column-label"
-                      id="source-db-column"
-                      value={selectedSourceColumn}
-                      label="Source Column"
-                      onChange={handleSourceColumnChange}
-                      disabled={availableSourceColumns.length === 0}
-                    >
-                      {availableSourceColumns.map((col) => (
-                        <MenuItem key={col} value={col}>
-                          {col}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  {availableSourceColumns.length === 0 && <Typography variant="caption" color="error">No source data loaded or columns found.</Typography>}
+            
+            {selectedSourceColumn && selectedTargetColumn && (
+              <Paper sx={{ p: 2, mb: 2 }}>
+                <Typography variant="h6" gutterBottom>Selected Data Preview</Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" gutterBottom>Source Column: {selectedSourceColumn}</Typography>
+                    <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
+                      <List dense>
+                        {(sourceInputType === 'file' ? sourceData : sourceDBData).slice(0, 10).map((row, idx) => (
+                          <ListItem key={idx}>
+                            <ListItemText primary={row[selectedSourceColumn]} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="subtitle2" gutterBottom>Target Column: {selectedTargetColumn}</Typography>
+                    <Box sx={{ maxHeight: 200, overflow: 'auto' }}>
+                      <List dense>
+                        {(targetInputType === 'file' ? targetData : targetDBData).slice(0, 10).map((row, idx) => (
+                          <ListItem key={idx}>
+                            <ListItemText primary={row[selectedTargetColumn]} />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  </Grid>
                 </Grid>
-                <Grid item xs={12} md={6}>
-                  <FormControl fullWidth>
-                    <InputLabel id="target-db-column-label">Target Column</InputLabel>
-                    <Select
-                      labelId="target-db-column-label"
-                      id="target-db-column"
-                      value={selectedTargetColumn}
-                      label="Target Column"
-                      onChange={handleTargetColumnChange}
-                      disabled={availableTargetColumns.length === 0}
-                    >
-                      {availableTargetColumns.map((col) => (
-                        <MenuItem key={col} value={col}>
-                          {col}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  {availableTargetColumns.length === 0 && <Typography variant="caption" color="error">No target data loaded or columns found.</Typography>}
-                </Grid>
-              </Grid>
-            </Paper>
-          )}
-        </Box>
+              </Paper>
+            )}
+          </Box>
         );
+
       case 2: // Learn Transformation
         return (
           <Box>
@@ -993,7 +1296,15 @@ const LearnTransformation = () => {
             onClick={handleNext}
             disabled={
               loading ||
-              (activeStep === 0 && (!sourceFile || !targetFile)) ||
+              (activeStep === 0 && 
+                ((sourceInputType === 'file' && !sourceFile) || 
+                 (sourceInputType === 'mongodb' && sourceDBData.length === 0) ||
+                 (sourceInputType === 'mysql' && sourceDBData.length === 0) ||
+                 (targetInputType === 'file' && !targetFile) ||
+                 (targetInputType === 'mongodb' && targetDBData.length === 0) ||
+                 (targetInputType === 'mysql' && targetDBData.length === 0)
+                )
+              ) ||
               (activeStep === 1 && (!selectedSourceColumn || !selectedTargetColumn)) ||
               (activeStep === 3 && !transformationName)
             }

@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from apply_transformation import apply_transformation_main
 from classify_transformation import classify_transformation_main
-from fuzzy_join import fuzzy_join_main
+#from fuzzy_join import fuzzy_join_main
 import traceback
 import pandas as pd
 import logging
