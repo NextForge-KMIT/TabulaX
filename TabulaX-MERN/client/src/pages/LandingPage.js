@@ -30,8 +30,8 @@ const HeroSection = styled(Box)(({ theme }) => ({
     left: 0,
     right: 0,
     bottom: 0,
-    background: `linear-gradient(75deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`, 
-    opacity: 0.8, 
+    background: `linear-gradient(75deg, ${theme.palette.primary.main} 0%, #F06292 100%)`, 
+    opacity: 0.85, 
     zIndex: 2,
   },
 }));
@@ -67,7 +67,7 @@ const LandingPage = () => {
                 px: 3.5,
                 fontSize: '1rem',
                 fontWeight: 600,
-                color: theme.palette.primary.main, // Blue text for solid button, as per image
+                color: theme.palette.primary.main, // Main blue text for the button to match gradient
                 backgroundColor: theme.palette.common.white,
                 borderRadius: theme.shape.borderRadius,
                 '&:hover': {
