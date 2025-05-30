@@ -12,7 +12,7 @@ import LearnTransformation from './pages/LearnTransformation';
 import ApplyTransformation from './pages/ApplyTransformation';
 import SavedTransformations from './pages/SavedTransformations';
 import FuzzyJoin from './pages/FuzzyJoin';
-
+import LandingPage from './pages/LandingPage';
 import NotFound from './pages/NotFound';
 
 // Components
@@ -236,7 +236,7 @@ function App() {
         <Router>
           <Navbar />
           <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" />} />
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route 

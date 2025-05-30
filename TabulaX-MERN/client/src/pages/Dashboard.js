@@ -25,21 +25,21 @@ const Dashboard = () => {
     {
       title: 'Learn Transformations',
       description: 'Upload source and target data to learn column transformations. TabulaX automatically classifies and generates transformation functions.',
-      icon: <SchoolIcon fontSize="large" color="primary" />,
+      icon: <SchoolIcon sx={{ fontSize: '3rem' }} color="secondary" />,
       link: '/learn',
       buttonText: 'Learn Transformation'
     },
     {
       title: 'Apply Transformations',
       description: 'Apply learned transformations to new data. Transform columns and prepare them for joining with target tables.',
-      icon: <ApplyIcon fontSize="large" color="primary" />,
+      icon: <ApplyIcon sx={{ fontSize: '3rem' }} color="secondary" />,
       link: '/apply',
       buttonText: 'Apply Transformation'
     },
     {
       title: 'Saved Transformations',
       description: 'View and manage your saved transformations. Reuse transformations across different datasets.',
-      icon: <SavedIcon fontSize="large" color="primary" />,
+      icon: <SavedIcon sx={{ fontSize: '3rem' }} color="secondary" />,
       link: '/saved',
       buttonText: 'View Saved'
     }
@@ -60,26 +60,26 @@ const Dashboard = () => {
       </Box>
 
       <Paper
-        elevation={3}
+        elevation={4} // Slightly increased elevation
         sx={{
-          p: 3,
-          mb: 4,
-          borderRadius: 2,
-          backgroundColor: '#f8f9fa',
-          border: '1px solid #e0e0e0'
+          p: { xs: 3, md: 4 }, // Responsive padding
+          mb: 5, // Increased margin bottom
+          borderRadius: 3, // Softer border radius
+          background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.light} 0%, ${theme.palette.primary.main} 100%)`,
+          color: 'primary.contrastText',
+          boxShadow: '0px 8px 25px rgba(0, 0, 0, 0.1)',
         }}
       >
-        <Typography variant="h5" gutterBottom>
+        <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
           Hello, {user?.username || 'User'}!
         </Typography>
-        <Typography variant="body1">
-          TabulaX is your intelligent data transformation assistant. Start by learning a transformation from example data, 
-          then apply it to new datasets, or browse your saved transformations.
+        <Typography variant="body1" sx={{ opacity: 0.9 }}>
+          Welcome to your TabulaX dashboard. Here you can access all the tools to streamline your data transformation tasks.
         </Typography>
       </Paper>
 
-      <Typography variant="h4" component="h2" gutterBottom sx={{ mb: 3 }}>
-        Features
+      <Typography variant="h3" component="h2" gutterBottom sx={{ mb: 4, fontWeight: 700, color: 'primary.dark', textAlign: 'center' }}>
+        Key Features
       </Typography>
 
       <Grid container spacing={4}>
@@ -92,8 +92,8 @@ const Dashboard = () => {
                 flexDirection: 'column',
                 transition: 'transform 0.3s, box-shadow 0.3s',
                 '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+                  transform: 'translateY(-8px)', // Increased lift
+                  boxShadow: (theme) => theme.shadows[12], // Using theme shadow for consistency
                 }
               }}
             >
@@ -101,7 +101,7 @@ const Dashboard = () => {
                 {feature.icon}
               </Box>
               <CardContent sx={{ flexGrow: 1 }}>
-                <Typography gutterBottom variant="h5" component="h2" align="center">
+                <Typography gutterBottom variant="h5" component="h3" align="center" sx={{ fontWeight: 600, color: 'primary.dark' }}>
                   {feature.title}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
