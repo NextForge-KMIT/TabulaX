@@ -64,6 +64,7 @@ const Navbar = () => {
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
     { text: 'Learn Transformation', icon: <SchoolIcon />, path: '/learn' },
     { text: 'Apply Transformation', icon: <ApplyIcon />, path: '/apply' },
+    { text: 'Fuzzy Join', icon: <LinkIcon />, path: '/fuzzy-join' },
     { text: 'Saved Transformations', icon: <SavedIcon />, path: '/saved' },
   ];
 

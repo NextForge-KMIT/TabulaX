@@ -11,6 +11,7 @@ import Dashboard from './pages/Dashboard';
 import LearnTransformation from './pages/LearnTransformation';
 import ApplyTransformation from './pages/ApplyTransformation';
 import SavedTransformations from './pages/SavedTransformations';
+import FuzzyJoin from './pages/FuzzyJoin';
 
 import NotFound from './pages/NotFound';
 
@@ -259,6 +260,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ApplyTransformation />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/fuzzy-join" 
+              element={
+                <ProtectedRoute>
+                  <FuzzyJoin />
                 </ProtectedRoute>
               } 
             />
