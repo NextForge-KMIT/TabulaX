@@ -286,12 +286,20 @@ exports.deleteTransformation = async (req, res, next) => {
 // @access  Private
 exports.executeTransformation = async (req, res, next) => {
   try {
-    const { tableData, transformationCode, inputColumnName, outputColumnName } = req.body;
+    const {
+      tableData,
+      transformationId,
+      transformationType,
+      transformationCode, // This might be undefined for 'General' type
+      inputColumnName,
+      outputColumnName
+    } = req.body;
 
-    if (!tableData || !transformationCode || !inputColumnName || !outputColumnName) {
+    // Basic validation for universally required fields
+    if (!tableData || !transformationId || !transformationType || !inputColumnName || !outputColumnName) {
       return res.status(400).json({
         success: false,
-        message: 'Missing required fields: tableData, transformationCode, inputColumnName, or outputColumnName'
+        message: 'Missing required fields: tableData, transformationId, transformationType, inputColumnName, or outputColumnName'
       });
     }
 
@@ -302,34 +310,85 @@ exports.executeTransformation = async (req, res, next) => {
       });
     }
 
+    let transformationDetailsToExecute = null;
+    let codeToExecute = transformationCode; // Default to provided code
+
+    if (transformationType === 'General') {
+      const fetchedTransformation = await Transformation.findById(transformationId);
+      if (!fetchedTransformation) {
+        return res.status(404).json({
+          success: false,
+          message: 'Transformation not found for General type execution.'
+        });
+      }
+      // Authorization check: Ensure the user owns this transformation
+      if (fetchedTransformation.user.toString() !== req.user.id) {
+        return res.status(401).json({
+          success: false,
+          message: 'Not authorized to execute this transformation.'
+        });
+      }
+      transformationDetailsToExecute = fetchedTransformation; // Send full details for General
+      codeToExecute = null; // General transformations don't use user-provided code directly in this payload
+    } else {
+      // For non-General types, transformationCode is required
+      if (!transformationCode) {
+        return res.status(400).json({
+          success: false,
+          message: 'transformationCode is required for non-General transformation types.'
+        });
+      }
+      // For non-General, we might still want to load the transformation to ensure it exists and is owned by user
+      const fetchedTransformation = await Transformation.findById(transformationId);
+      if (!fetchedTransformation) {
+        return res.status(404).json({
+          success: false,
+          message: 'Transformation not found.'
+        });
+      }
+      if (fetchedTransformation.user.toString() !== req.user.id) {
+        return res.status(401).json({
+          success: false,
+          message: 'Not authorized to execute this transformation.'
+        });
+      }
+      // Potentially verify consistency: fetchedTransformation.transformationCode === transformationCode
+    }
+
+    const flaskPayload = {
+      table_data: tableData,
+      input_column_name: inputColumnName,
+      output_column_name: outputColumnName,
+      transformation_type: transformationType,
+      // Conditionally add execution details
+      ...(codeToExecute && { transformation_code: codeToExecute }),
+      ...(transformationDetailsToExecute && { transformation_details: transformationDetailsToExecute })
+    };
+
     try {
-      const flaskApiUrl = process.env.FLASK_API_URL || 'http://localhost:5000'; 
-      const response = await axios.post(`${flaskApiUrl}/execute-transformation`, {
-        table_data: tableData,
-        transformation_code: transformationCode,
-        input_column_name: inputColumnName,
-        output_column_name: outputColumnName,
-      });
+      const flaskApiUrl = process.env.FLASK_API_URL || 'http://localhost:5001'; // Corrected default port for Flask
+      const response = await axios.post(`${flaskApiUrl}/execute-transformation`, flaskPayload);
 
       if (response.data.success) {
-        return res.status(200).json(response.data); 
+        return res.status(200).json(response.data);
       } else {
-        return res.status(response.status || 400).json({ 
+        return res.status(response.status || 400).json({
+          success: false,
           message: response.data.message || 'Error executing transformation via Flask server',
           details: response.data.details || null
         });
       }
     } catch (error) {
-      console.error('Error calling Flask API for execute-transformation:', error.message);
+      console.error('Error calling Flask API for execute-transformation:', error.response ? JSON.stringify(error.response.data) : error.message);
       const err = new Error(error.response?.data?.message || 'Failed to execute transformation via Flask server');
       err.statusCode = error.response?.status || 500;
       err.details = error.response?.data?.details;
-      return next(err); 
+      return next(err);
     }
   } catch (error) {
-    if (!error.statusCode) { 
-        error.statusCode = 500;
+    if (!error.statusCode) {
+      error.statusCode = 500;
     }
-    next(error); 
+    next(error);
   }
 };

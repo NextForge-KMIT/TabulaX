@@ -1,13 +1,18 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from apply_transformation import apply_transformation_main
+from dotenv import load_dotenv # Added to load .env file
+from apply_transformation import apply_transformation_main, generate_general_transformation, log_error # Added generate_general_transformation, log_error
 from classify_transformation import classify_transformation_main
 from fuzzy_join import perform_fuzzy_join
+from langchain_google_genai import ChatGoogleGenerativeAI # Added for LLM
+import os # Added for environment variables
 import traceback
 import json
 import pandas as pd
 import logging
 import sys
+
+load_dotenv() # Load environment variables from .env file
 
 app = Flask(__name__)
 # Enable CORS with explicit configuration
@@ -42,12 +47,13 @@ def execute_transformation_route():
     try:
         data = request.json
         table_data = data.get('table_data')
-        transformation_code = data.get('transformation_code')
         input_column_name = data.get('input_column_name')
         output_column_name = data.get('output_column_name')
-
-        if not all([table_data, transformation_code, input_column_name, output_column_name]):
-            return jsonify({"success": False, "message": "Missing required parameters: table_data, transformation_code, input_column_name, output_column_name"}), 400
+        transformation_type = data.get('transformation_type')
+        
+        # Core parameters validation
+        if not all([table_data, input_column_name, output_column_name, transformation_type]):
+            return jsonify({"success": False, "message": "Missing required parameters: table_data, input_column_name, output_column_name, or transformation_type"}), 400
 
         if not isinstance(table_data, list) or not all(isinstance(row, dict) for row in table_data):
             return jsonify({"success": False, "message": "table_data must be a list of dictionaries."}), 400
@@ -60,45 +66,85 @@ def execute_transformation_route():
         if input_column_name not in df.columns:
             return jsonify({"success": False, "message": f"Input column '{input_column_name}' not found in the uploaded data."}), 400
 
-        # Prepare a local scope for exec
-        local_scope = {}
-        # Ensure pandas is available if the function code needs it, though it's better if functions are self-contained
-        # Or pass it explicitly if functions are designed to take df and col_name
-        # For now, assuming transform_value(value) structure
-        exec_globals = {'pd': pd} 
+        transformed_data_list = []
 
-        exec(transformation_code, exec_globals, local_scope)
-        
-        transform_func = local_scope.get('transform_value') # Assuming the function is named transform_value
-
-        if not callable(transform_func):
-            # Attempt to find any function defined if 'transform_value' is not present
-            for key, value in local_scope.items():
-                if callable(value) and key != '__builtins__': # Exclude builtins
-                    transform_func = value
-                    logger.info(f"Found callable function '{key}' in transformation_code, using it.")
-                    break
-            if not callable(transform_func):
-                 logger.error("No callable function (e.g., 'transform_value') found in the provided transformation_code.")
-                 return jsonify({"success": False, "message": "Transformation function (e.g., 'transform_value') not found or is invalid in the provided code."}), 400
-
-        # Define a wrapper for applying the function with error handling per row
-        def apply_transform_safely(value):
+        llm = None
+        if transformation_type == 'General':
+            google_api_key = os.environ.get("GOOGLE_API_KEY")
+            if not google_api_key:
+                logger.error("GOOGLE_API_KEY not found in environment variables for General Transformation.")
+                return jsonify({"success": False, "message": "Server configuration error: GOOGLE_API_KEY missing for General Transformation."}), 500
             try:
-                return transform_func(value)
+                llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", google_api_key=google_api_key)
             except Exception as e:
-                logger.warning(f"Error applying transformation to value '{value}': {str(e)}. Returning original value.")
-                return value # Or None, or a specific marker like "ERROR_IN_TRANSFORMATION"
+                logger.error(f"Failed to initialize LLM for General Transformation: {str(e)}")
+                return jsonify({"success": False, "message": f"Failed to initialize LLM for General Transformation: {str(e)}"}), 500
 
-        df[output_column_name] = df[input_column_name].apply(apply_transform_safely)
-        
-        transformed_data_list = df.to_dict(orient='records')
-        return jsonify({"success": True, "data": transformed_data_list})
+        if transformation_type == 'General':
+            transformation_details = data.get('transformation_details')
+            if not transformation_details:
+                return jsonify({"success": False, "message": "Missing 'transformation_details' for General transformation type."}), 400
+            
+            logger.info(f"Executing General transformation with ID: {transformation_details.get('_id')}, Input Column: {input_column_name}, Output Column: {output_column_name}")
+            
+            try:
+                # Ensure the input column exists before trying to access it
+                if input_column_name not in df.columns:
+                    return jsonify({"success": False, "message": f"Input column '{input_column_name}' not found in the data for General transformation."}), 400
+
+                gen_trans_result = generate_general_transformation(transformation_details, df[input_column_name], llm)
+                
+                if gen_trans_result.get('success'):
+                    df[output_column_name] = gen_trans_result['outputs']
+                    # Optionally, add provenance and relationship if needed for the response
+                    # df['provenance'] = gen_trans_result['provenances']
+                    # df['relationship_detected'] = gen_trans_result['relationship']
+                    transformed_data_list = df.to_dict(orient='records')
+                    logger.info(f"General transformation successful. Relationship: {gen_trans_result['relationship']}")
+                else:
+                    error_msg = gen_trans_result.get('message', 'General transformation failed due to an unknown error.')
+                    logger.error(f"General transformation failed: {error_msg}")
+                    return jsonify({"success": False, "message": error_msg}), 500
+            except Exception as e:
+                logger.error(f"Exception during General transformation call: {str(e)}\n{traceback.format_exc()}")
+                return jsonify({'success': False, 'message': f'Error during general transformation: {str(e)}', 'traceback': traceback.format_exc()}), 500
+
+        else: # For non-General types (e.g., Python, SQL)
+            transformation_code = data.get('transformation_code')
+            if not transformation_code:
+                return jsonify({"success": False, "message": "Missing 'transformation_code' for non-General transformation type."}), 400
+
+            local_scope = {}
+            exec_globals = {'pd': pd} 
+            exec(transformation_code, exec_globals, local_scope)
+            
+            transform_func = local_scope.get('transform_value')
+            if not callable(transform_func):
+                for key, value in local_scope.items():
+                    if callable(value) and key != '__builtins__':
+                        transform_func = value
+                        logger.info(f"Found callable function '{key}' in transformation_code, using it.")
+                        break
+                if not callable(transform_func):
+                     logger.error("No callable function (e.g., 'transform_value') found in the provided transformation_code.")
+                     return jsonify({"success": False, "message": "Transformation function (e.g., 'transform_value') not found or is invalid in the provided code."}), 400
+
+            def apply_transform_safely(value):
+                try:
+                    return transform_func(value)
+                except Exception as e:
+                    logger.warning(f"Error applying transformation to value '{value}': {str(e)}. Returning original value.")
+                    return value
+            
+            df[output_column_name] = df[input_column_name].apply(apply_transform_safely)
+            transformed_data_list = df.to_dict(orient='records')
+
+        return jsonify({"success": True, "data": transformed_data_list, "message": "Transformation executed successfully."})
 
     except Exception as e:
         logger.error(f"Error in /execute-transformation: {str(e)}")
         logger.error(traceback.format_exc())
-        return jsonify({"success": False, "message": str(e)}), 500
+        return jsonify({'success': False, 'message': str(e), 'traceback': traceback.format_exc()}), 500
 
 @app.route('/fuzzy-join', methods=['POST'])
 def fuzzy_join_route():

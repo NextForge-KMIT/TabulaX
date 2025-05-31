@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -23,7 +24,12 @@ import {
   CardContent,
   CardHeader,
   Chip,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow,
   Icon, 
   Tooltip 
 } from '@mui/material';
@@ -90,67 +96,31 @@ const getDropzoneStyle = (isDragActive, isDragAccept, isDragReject, theme) => {
 };
 
 const ApplyTransformation = () => {
+  const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [errorDetails, setErrorDetails] = useState(''); // Keep for detailed errors
+  const [errorDetails, setErrorDetails] = useState('');
   const [success, setSuccess] = useState('');
 
   const [savedTransformations, setSavedTransformations] = useState([]);
-  const [selectedTransformation, setSelectedTransformation] = useState(''); // ID of the selected transformation
-  const [transformationDetails, setTransformationDetails] = useState(null); // Full details of selected transformation (includes .code)
+  const [selectedTransformation, setSelectedTransformation] = useState('');
+  const [transformationDetails, setTransformationDetails] = useState(null);
   
   const auth = useAuth();
 
   // States for single file upload and configuration for applying transformation
-  const [fileForTransformation, setFileForTransformation] = useState(null); // The uploaded file object
-  const [dataForTransformation, setDataForTransformation] = useState([]); // Parsed data from fileForTransformation
-  const [columnsForTransformation, setColumnsForTransformation] = useState([]); // Columns from dataForTransformation
-  const [selectedInputColumn, setSelectedInputColumn] = useState(''); // Name of the column to apply transformation to
-  const [outputColumnName, setOutputColumnName] = useState(''); // Desired name for the new transformed column
+  const [fileForTransformation, setFileForTransformation] = useState(null);
+  const [dataForTransformation, setDataForTransformation] = useState([]);
+  const [columnsForTransformation, setColumnsForTransformation] = useState([]);
+  const [selectedInputColumn, setSelectedInputColumn] = useState('');
+  const [outputColumnName, setOutputColumnName] = useState('');
   
-  const [transformedData, setTransformedData] = useState([]); // Data after transformation is applied
+  const [transformedData, setTransformedData] = useState([]);
 
-  // --- Existing states that might be for other functionalities (e.g., learning, joining) ---
-  // These might be refactored or removed if this page becomes solely for applying transformations
-  const [dataSource, setDataSource] = useState('csv'); // Potentially simplify if only file upload for apply
-  const [sourceFile, setSourceFile] = useState(null); // Potentially merge with fileForTransformation
-  const [targetFile, setTargetFile] = useState(null);
-  const [sourceData, setSourceData] = useState([]); // Potentially merge with dataForTransformation
-  const [targetData, setTargetData] = useState([]);
-  const [excelSourceFile, setExcelSourceFile] = useState(null);
-  const [excelTargetFile, setExcelTargetFile] = useState(null);
-  const [dbConfig, setDbConfig] = useState({
-    host: '', port: '', user: '', password: '', database: '', query: '',
-    uri: '', collection: '' 
-  });
-  const [sourceColumns, setSourceColumns] = useState([]); // Potentially merge with columnsForTransformation
-  const [targetColumns, setTargetColumns] = useState([]);
-  // const [selectedSourceColumn, setSelectedSourceColumn] = useState(''); // Merged to selectedInputColumn
-  const [selectedTargetColumn, setSelectedTargetColumn] = useState('');
-  // const [transformedColumnName, setTransformedColumnName] = useState(''); // Merged to outputColumnName
-  const [maxDistanceThreshold, setMaxDistanceThreshold] = useState(3);
-  const [joinedData, setJoinedData] = useState([]);
-  // DB specific states (Mongo, MySQL) - keep for now, might be part of a larger component
-  const [mongoURI, setMongoURI] = useState('');
-  const [collectionName, setCollectionName] = useState('');
-  const [externalMongoData, setExternalMongoData] = useState([]);
-  const [isFetchingExternalMongo, setIsFetchingExternalMongo] = useState(false);
-  const [externalMongoError, setExternalMongoError] = useState(null);
-  const [mysqlHost, setMysqlHost] = useState(''); 
-  const [mysqlUser, setMysqlUser] = useState('');
-  const [mysqlPassword, setMysqlPassword] = useState('');
-  const [mysqlDatabase, setMysqlDatabase] = useState('');
-  const [mysqlPort, setMysqlPort] = useState('3306');
-  const [mysqlTableName, setMysqlTableName] = useState('');
-  const [externalMysqlData, setExternalMysqlData] = useState([]);
-  const [isFetchingExternalMysql, setIsFetchingExternalMysql] = useState(false);
-  const [externalMysqlError, setExternalMysqlError] = useState(null);
-  // --- End of existing states ---
+  const theme = useTheme();
 
-  const theme = useTheme(); // For dropzone style
-
-  const steps = ['1. Select Transformation', '2. Upload Data & Configure Execution', '3. View Transformed Data'];
+  const steps = ['1. Select Transformation', '2. Upload Data, Configure & Execute'];
 
   const fetchTransformationDetails = useCallback(async (transformationId) => {
     if (!transformationId) {
@@ -188,11 +158,10 @@ const ApplyTransformation = () => {
         });
         if (response.data.transformations && response.data.transformations.length > 0) {
           setSavedTransformations(response.data.transformations);
-          // If no transformation is selected, or if the selected one is not in the new list, select the first one.
           if (!selectedTransformation || !response.data.transformations.find(t => String(t.id) === selectedTransformation)) {
             const firstTransformationId = String(response.data.transformations[0].id);
             setSelectedTransformation(firstTransformationId);
-            fetchTransformationDetails(firstTransformationId); // Fetch details for the auto-selected one
+            fetchTransformationDetails(firstTransformationId);
           }
         } else {
           setSavedTransformations([]);
@@ -209,13 +178,12 @@ const ApplyTransformation = () => {
       }
     };
     fetchTransformations();
-  }, [auth.token, fetchTransformationDetails]); // Removed selectedTransformation from deps to avoid loop, rely on explicit fetchTransformationDetails call
+  }, [auth.token, fetchTransformationDetails]);
 
-  // Handler for selecting a transformation from the dropdown
   const handleTransformationChange = (event) => {
     const newId = event.target.value;
     setSelectedTransformation(newId);
-    fetchTransformationDetails(newId); // Fetch details when selection changes
+    fetchTransformationDetails(newId);
   };
 
   const onDropSingleFile = useCallback((acceptedFiles) => {
@@ -224,9 +192,9 @@ const ApplyTransformation = () => {
       setFileForTransformation(file);
       setError('');
       setSuccess(`File "${file.name}" selected.`);
-      setTransformedData([]); // Clear previous results
-      setSelectedInputColumn(''); // Reset column selection
-      setOutputColumnName(''); // Reset output column name
+      setTransformedData([]);
+      setSelectedInputColumn('');
+      setOutputColumnName('');
 
       const reader = new FileReader();
       reader.onabort = () => setError('File reading was aborted.');
@@ -235,7 +203,6 @@ const ApplyTransformation = () => {
         try {
           let parsedData;
           if (file.name.endsWith('.csv')) {
-            // Try parsing with different delimiters
             const tryDelimiters = (delimiters, index = 0) => {
               if (index >= delimiters.length) {
                 setError('Unable to parse CSV with any common delimiter. Please check your file format.');
@@ -251,26 +218,23 @@ const ApplyTransformation = () => {
                 delimiter: currentDelimiter
               });
               
-              // Check if parsing was successful
               if (result.errors.length === 0 && result.data.length > 0 && 
                   result.meta.fields && result.meta.fields.length > 0) {
                 console.log(`Successfully parsed with delimiter: '${currentDelimiter === '\t' ? 'tab' : currentDelimiter}'`);
                 parsedData = result.data;
                 processData();
               } else {
-                // Try the next delimiter
                 console.log(`Failed with delimiter: '${currentDelimiter === '\t' ? 'tab' : currentDelimiter}', trying next...`);
                 tryDelimiters(delimiters, index + 1);
               }
             };
             
-            // Function to process the successfully parsed data
             const processData = () => {
               if (parsedData && parsedData.length > 0) {
                 setDataForTransformation(parsedData);
                 setColumnsForTransformation(Object.keys(parsedData[0]));
                 if (Object.keys(parsedData[0]).length > 0) {
-                  setSelectedInputColumn(Object.keys(parsedData[0])[0]); // Auto-select first column
+                  setSelectedInputColumn(Object.keys(parsedData[0])[0]);
                 }
                 setOutputColumnName(`transformed_${Object.keys(parsedData[0])[0] || 'column'}`);
               } else {
@@ -278,26 +242,14 @@ const ApplyTransformation = () => {
               }
             };
             
-            // Start trying delimiters
             tryDelimiters([',', '\t', ';', '|', ':', ' ']);
-            return; // Early return since we're handling the data processing in the tryDelimiters function
+            return;
           } else if (file.name.endsWith('.xls') || file.name.endsWith('.xlsx')) {
-            const XLSX = require('xlsx');
-            const workbook = XLSX.read(reader.result, { type: 'binary' });
-            const sheetName = workbook.SheetNames[0];
-            parsedData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {header: 1});
-            // Convert array of arrays to array of objects if header: 1 was used for dynamic headers
-            if (parsedData.length > 0 && Array.isArray(parsedData[0])) {
-                const headers = parsedData[0];
-                const jsonData = parsedData.slice(1).map(row => {
-                    let obj = {};
-                    headers.forEach((header, index) => {
-                        obj[header] = row[index];
-                    });
-                    return obj;
-                });
-                parsedData = jsonData;
-            }
+            // Note: This requires xlsx library to be installed
+            // import * as XLSX from 'xlsx';
+            // For now, we'll handle this as an error since XLSX is not imported
+            setError('Excel file support requires the xlsx library. Please convert to CSV or add xlsx dependency.');
+            return;
           } else {
             setError('Unsupported file type. Please upload CSV or Excel.');
             return;
@@ -307,9 +259,9 @@ const ApplyTransformation = () => {
             setDataForTransformation(parsedData);
             setColumnsForTransformation(Object.keys(parsedData[0]));
             if (Object.keys(parsedData[0]).length > 0) {
-                setSelectedInputColumn(Object.keys(parsedData[0])[0]); // Auto-select first column
+                setSelectedInputColumn(Object.keys(parsedData[0])[0]);
             }
-            setOutputColumnName(`transformed_${Object.keys(parsedData[0])[0] || 'column'}`); // Suggest an output column name
+            setOutputColumnName(`transformed_${Object.keys(parsedData[0])[0] || 'column'}`);
           } else {
             setError('File is empty or could not be parsed.');
             setDataForTransformation([]);
@@ -342,8 +294,12 @@ const ApplyTransformation = () => {
   const dropzoneStyle = getDropzoneStyle(isDragActive, isDragAccept, isDragReject, theme);
 
   const handleExecuteTransformation = async () => {
-    if (!selectedTransformation || !transformationDetails || !transformationDetails.transformationCode) {
-      setError('Please select a valid transformation first.');
+    if (!selectedTransformation || !transformationDetails) {
+      setError('Please select valid transformation details first.');
+      return;
+    }
+    if (transformationDetails.transformationType !== 'General' && !transformationDetails.transformationCode) {
+      setError('The selected transformation type requires a script, but it seems to be missing. Please check the transformation definition.');
       return;
     }
     if (dataForTransformation.length === 0) {
@@ -366,13 +322,20 @@ const ApplyTransformation = () => {
 
     try {
       const token = auth.token || localStorage.getItem('token');
-      const response = await axios.post('/api/transformations/execute', 
-        {
-          tableData: dataForTransformation,
-          transformationCode: transformationDetails.transformationCode,
-          inputColumnName: selectedInputColumn,
-          outputColumnName: outputColumnName.trim(),
-        },
+      const payload = {
+        tableData: dataForTransformation,
+        transformationId: selectedTransformation,
+        transformationType: transformationDetails.transformationType,
+        inputColumnName: selectedInputColumn,
+        outputColumnName: outputColumnName.trim(),
+      };
+
+      if (transformationDetails.transformationType !== 'General' && transformationDetails.transformationCode) {
+        payload.transformationCode = transformationDetails.transformationCode;
+      }
+
+      const response = await axios.post('/api/transformations/execute',
+        payload,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -380,8 +343,7 @@ const ApplyTransformation = () => {
 
       if (response.data.success) {
         setTransformedData(response.data.data);
-        setSuccess('Transformation applied successfully!');
-        setActiveStep(2); // Move to results view
+        setSuccess('Transformation executed successfully!');
       } else {
         setError(response.data.message || 'Failed to apply transformation.');
         setErrorDetails(response.data.details || '');
@@ -394,29 +356,29 @@ const ApplyTransformation = () => {
     }
   };
 
-  const handleNext = () => {
-    setError(''); // Clear errors when moving between steps
-    if (activeStep === 0 && !selectedTransformation) {
-        setError("Please select a transformation before proceeding.");
-        return;
-    }
-    if (activeStep === 1 && (dataForTransformation.length === 0 || !selectedInputColumn || !outputColumnName)) {
-        setError("Please upload data, select an input column, and specify an output column name before applying.");
-        // Note: actual execution happens via a separate button in step 1's content
-        // This check is more for proceeding to the 'View Results' step if we change flow
-        // For now, let's allow proceeding to step 1 to configure, execution is manual.
-    }
-    setActiveStep((prevActiveStep) => prevActiveStep + 1);
-  };
-
   const handleBack = () => {
     setError('');
+    setSuccess('');
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
   };
-  
+
+  const handleNext = () => {
+    setError('');
+    setSuccess('');
+    if (activeStep === 0) {
+      if (!selectedTransformation) {
+        setError('Please select a transformation first.');
+        return;
+      }
+      setActiveStep(1);
+    } else if (activeStep === 1) {
+      navigate('/dashboard');
+    }
+  };
+
   const renderStepContent = (step) => {
     switch (step) {
-      case 0: // Select Transformation
+      case 0:
         return (
           <Box sx={{ mt: 3 }}>
             <Typography variant="h6" gutterBottom>Select a Saved Transformation</Typography>
@@ -451,7 +413,7 @@ const ApplyTransformation = () => {
             )}
           </Box>
         );
-      case 1: // Upload Data & Configure Execution
+      case 1:
         return (
           <Box sx={{ mt: 3 }}>
             <Typography variant="h6" gutterBottom>Upload Data File (CSV/Excel)</Typography>
@@ -505,69 +467,61 @@ const ApplyTransformation = () => {
             >
               {loading ? <CircularProgress size={24} sx={{ color: 'inherit'}} /> : 'Execute Transformation'}
             </Button>
-          </Box>
-        );
-      case 2: // View Transformed Data
-        const handleDownloadTransformed = () => {
-          if (!transformedData || transformedData.length === 0) return;
-          const headers = Object.keys(transformedData[0]);
-          const csvRows = [headers.join(',')];
-          for (const row of transformedData) {
-            const values = headers.map(h => {
-              const val = row[h];
-              if (val === null || val === undefined) return '';
-              const str = String(val).replace(/"/g, '""');
-              return /[",\n]/.test(str) ? `"${str}"` : str;
-            });
-            csvRows.push(values.join(','));
-          }
-          const csvContent = csvRows.join('\n');
-          const blob = new Blob([csvContent], { type: 'text/csv' });
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.setAttribute('download', 'transformed_data.csv');
-          document.body.appendChild(link);
-          link.click();
-          link.parentNode.removeChild(link);
-          window.URL.revokeObjectURL(url);
-        };
-        return (
-          <Box sx={{ mt: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6" gutterBottom>Transformed Data</Typography>
-              {transformedData.length > 0 && (
-                <Button variant="contained" color="primary" onClick={handleDownloadTransformed}>
-                  Download Transformed Data
-                </Button>
-              )}
-            </Box>
-            {transformedData.length > 0 ? (
-              <Paper elevation={2} sx={{ width: '100%', overflow: 'hidden' }}>
-                <TableContainer sx={{ maxHeight: 440 }}>
-                  <Table stickyHeader aria-label="sticky table">
-                    <TableHead>
-                      <TableRow>
-                        {Object.keys(transformedData[0]).map((key) => (
-                          <TableCell key={key} sx={{ fontWeight: 'bold', backgroundColor: theme.palette.background.default }}>{key}</TableCell>
-                        ))}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {transformedData.slice(0, 100).map((row, index) => ( // Display up to 100 rows for performance
-                        <TableRow hover role="checkbox" tabIndex={-1} key={index}>
-                          {Object.values(row).map((value, i) => (
-                            <TableCell key={i}>{String(value)}</TableCell>
+
+            {transformedData.length > 0 && (
+              <Box sx={{ mt: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                  <Typography variant="h6" gutterBottom>Transformed Data</Typography>
+                  <Button variant="contained" color="primary" onClick={() => {
+                    const headers = Object.keys(transformedData[0]);
+                    const csvRows = [headers.join(',')];
+                    for (const row of transformedData) {
+                      const values = headers.map(h => {
+                        const val = row[h];
+                        if (val === null || val === undefined) return '';
+                        const str = String(val).replace(/"/g, '""');
+                        return /[",\n]/.test(str) ? `"${str}"` : str;
+                      });
+                      csvRows.push(values.join(','));
+                    }
+                    const csvContent = csvRows.join('\n');
+                    const blob = new Blob([csvContent], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', 'transformed_data.csv');
+                    document.body.appendChild(link);
+                    link.click();
+                    link.parentNode.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                  }}>
+                    Download Transformed Data
+                  </Button>
+                </Box>
+                <Paper elevation={2} sx={{ width: '100%', overflow: 'hidden' }}>
+                  <TableContainer sx={{ maxHeight: 440 }}>
+                    <Table stickyHeader aria-label="sticky table">
+                      <TableHead>
+                        <TableRow>
+                          {Object.keys(transformedData[0]).map((key) => (
+                            <TableCell key={key} sx={{ fontWeight: 'bold', backgroundColor: theme.palette.background.default }}>{key}</TableCell>
                           ))}
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-                {transformedData.length > 100 && <Typography sx={{p:1, textAlign:'center', fontSize:'0.9rem'}}>Showing first 100 rows.</Typography>}
-              </Paper>
-            ) : (
-              <Typography>No transformed data to display. Apply a transformation in the previous step.</Typography>
+                      </TableHead>
+                      <TableBody>
+                        {transformedData.slice(0, 100).map((row, index) => (
+                          <TableRow hover role="checkbox" tabIndex={-1} key={index}>
+                            {Object.values(row).map((value, i) => (
+                              <TableCell key={i}>{String(value)}</TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                  {transformedData.length > 100 && <Typography sx={{p:1, textAlign:'center', fontSize:'0.9rem'}}>Showing first 100 rows.</Typography>}
+                </Paper>
+              </Box>
             )}
           </Box>
         );
@@ -611,11 +565,9 @@ const ApplyTransformation = () => {
             Back
           </Button>
           <Box sx={{ flex: '1 1 auto' }} />
-          {activeStep !== 1 && /* Hide Next button on step 1 as execution is manual */
-            <Button onClick={handleNext} disabled={loading || (activeStep === 0 && !selectedTransformation)}>
-              {activeStep === steps.length - 1 ? 'Finish' : 'Next'}
-            </Button>
-          }
+          <Button onClick={handleNext} disabled={loading || (activeStep === 0 && !selectedTransformation)}>
+            {activeStep === steps.length - 1 ? 'Finish' : 'Next'}
+          </Button>
         </Box>
       </Paper>
     </Container>

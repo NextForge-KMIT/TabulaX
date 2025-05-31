@@ -9,142 +9,124 @@ def log_error(message):
     with open("error_log.txt", "a") as f:
         f.write(f"{message}\n")
 
-def generate_general_transformation(source_series, target_series, new_input_series, llm, output_path="transformed_output.csv"):
+def generate_general_transformation(transformation_details, new_input_series, llm):
     """
     Applies general transformation on new input values using:
-    1. A lookup table built from example source-target pairs
-    2. LLM inference for unseen inputs (returns only target value, e.g., CEO name)
-    Exports results to CSV with transformation provenance.
+    1. A lookup table built from example source-target pairs stored in transformation_details.
+    2. LLM inference for unseen inputs.
+    Returns a dictionary with transformed outputs, provenances, and relationship.
     """
-    # Clear previous error logs
-    with open("error_log.txt", "w") as f:
-        f.write("Starting new general transformation\n")
-    
+    log_error("Starting generate_general_transformation with transformation_details")
+
+    source_examples = transformation_details.get('sourceExamples', [])
+    target_examples = transformation_details.get('targetExamples', [])
+
     # Step 0: Create example mapping dictionary with normalization
     examples_dict = {}
     normalized_dict = {}
     
-    # First, collect all valid pairs
     valid_pairs = []
-    for s, t in zip(source_series, target_series):
+    if len(source_examples) != len(target_examples):
+        log_error(f"Warning: Mismatch in lengths of sourceExamples ({len(source_examples)}) and targetExamples ({len(target_examples)}). Proceeding with common length.")
+        min_len = min(len(source_examples), len(target_examples))
+        source_examples = source_examples[:min_len]
+        target_examples = target_examples[:min_len]
+
+    for s, t in zip(source_examples, target_examples):
         if pd.notna(s) and pd.notna(t) and str(s).strip() and str(t).strip():
             valid_pairs.append((str(s).strip(), str(t).strip()))
     
-    log_error(f"Found {len(valid_pairs)} valid source-target pairs")
+    log_error(f"Found {len(valid_pairs)} valid source-target pairs from transformation_details")
     
-    # Build the dictionaries
+    if not valid_pairs:
+        log_error("No valid example pairs found in transformation_details. Cannot perform lookup or infer relationship effectively.")
+        # Return original values as a fallback if no examples
+        outputs = new_input_series.tolist()
+        provenances = ['no_examples_provided'] * len(new_input_series)
+        return {'success': True, 'outputs': outputs, 'provenances': provenances, 'relationship': 'Unknown (no examples)'}
+
     for s, t in valid_pairs:
-        # Store original form
         examples_dict[s] = t
-        # Store normalized form (lowercase)
         normalized_dict[s.lower()] = t
     
-    # Format pairs for prompt (use all pairs for better context)
     pairs_formatted = [f'"{s}" -> "{t}"' for s, t in valid_pairs]
     pairs_str = "\n".join(pairs_formatted)
-    
-    log_error(f"Created lookup table with {len(examples_dict)} entries")
+    log_error(f"Created lookup table with {len(examples_dict)} entries from transformation_details")
     
     # Step 1: Identify the relationship type
-    # Use examples from the classification examples in classify_transformation.py
-    relationship_examples = """
+    relationship_examples_text = """
     Examples of relationships:
     - "Einstein" -> "Scientist" = Person to Profession
     - "Japan" -> "Tokyo" = Country to Capital City
-    - "Tesla" -> "Elon Musk" = Company to CEO
-    - "Whale" -> "Mammal" = Animal to Category
-    - "Python" -> "Programming Language" = Term to Type
-    - "Venus" -> "Planet" = Entity to Category
-    - "USD" -> "United States Dollar" = Currency Code to Full Name
+    # ... (other examples can be added or kept concise)
     """
-    
     relationship_prompt = f"""
     Given these mappings between source and target values:
     {pairs_str}
-    
-    {relationship_examples}
-    
-    Identify the specific relationship between source and target.
-    Format your answer as: [Source Type] to [Target Type]
-    Be precise and specific about the nature of the relationship.
-    Only output the relationship, nothing else.
+    {relationship_examples_text}
+    Identify the specific relationship. Format: [Source Type] to [Target Type]. Only output the relationship.
     """
-    
+    relationship_line = "Unknown"
     try:
-        relationship_response = llm.invoke([HumanMessage(content=relationship_prompt)])
-        relationship_result = relationship_response.content.strip()
-        # Extract the relationship line (look for "to" pattern)
-        relationship_line = next((line.strip() for line in relationship_result.split('\n') if ' to ' in line.lower()), relationship_result)
+        if pairs_str: # Only attempt if there are pairs to analyze
+            relationship_response = llm.invoke([HumanMessage(content=relationship_prompt)])
+            relationship_result = relationship_response.content.strip()
+            relationship_line = next((line.strip() for line in relationship_result.split('\n') if ' to ' in line.lower()), relationship_result)
         log_error(f"Detected relationship: {relationship_line}")
     except Exception as e:
         log_error(f"Error detecting relationship: {str(e)}")
-        relationship_line = "Source to Target"
+        relationship_line = "Error detecting relationship"
     
     # Step 2: Process new inputs
-    results = []
-    for idx, val in enumerate(new_input_series):
+    outputs = []
+    provenances = []
+    for val in new_input_series:
         try:
-            if pd.isna(val) or val == '' or val is None:
-                results.append((val, "", "null"))
+            if pd.isna(val) or str(val).strip() == '':
+                outputs.append("") # Or None, depending on desired output for nulls
+                provenances.append("empty_input")
                 continue
                 
             val_str = str(val).strip()
             
-            # Try exact match first
             if val_str in examples_dict:
-                results.append((val_str, examples_dict[val_str], "exact_match"))
+                outputs.append(examples_dict[val_str])
+                provenances.append("exact_match")
                 continue
                 
-            # Try case-insensitive match
             val_lower = val_str.lower()
             if val_lower in normalized_dict:
-                results.append((val_str, normalized_dict[val_lower], "case_insensitive_match"))
+                outputs.append(normalized_dict[val_lower])
+                provenances.append("case_insensitive_match")
                 continue
             
-            # For LLM inference, prepare a focused prompt with relevant examples
-            inference_prompt = f"""
-            I need to transform "{val_str}" based on the relationship: {relationship_line}
-            
-            Here are some examples of this transformation:
+            llm_prompt = f"""
+            Examples of transformation ({relationship_line}):
             {pairs_str}
-            
-            What would be the correct output for "{val_str}"?
-            Provide ONLY the result value, no explanation or additional text.
+            New input: "{val_str}"
+            Predict the target value. Only output the predicted target value. If uncertain, output the original input "{val_str}".
             """
-            
-            llm_response = llm.invoke([HumanMessage(content=inference_prompt)])
-            inferred_result = llm_response.content.strip()
-            
-            # Clean up the result (remove quotes, extra spaces, etc.)
-            inferred_result = inferred_result.strip('"').strip("'").strip()
-            # Remove any explanations that might be included
-            if "\n" in inferred_result:
-                inferred_result = inferred_result.split("\n")[0].strip()
-            
-            results.append((val_str, inferred_result, "llm_inference"))
-            
-            # Log progress for long lists
-            if idx % 10 == 0 and idx > 0:
-                log_error(f"Processed {idx}/{len(new_input_series)} inputs")
+            try:
+                response = llm.invoke([HumanMessage(content=llm_prompt)])
+                transformed_val = response.content.strip()
                 
+                if transformed_val == val_str or not transformed_val:
+                    outputs.append(val_str)
+                    provenances.append("llm_fallback_uncertain")
+                else:
+                    outputs.append(transformed_val)
+                    provenances.append("llm_generated")
+            except Exception as e:
+                log_error(f"LLM inference error for '{val_str}': {str(e)}")
+                outputs.append(val_str)
+                provenances.append("llm_error")
         except Exception as e:
-            log_error(f"Error processing input '{val}': {str(e)}")
-            results.append((val, f"Error: {str(e)}", "error"))
-    
-    # Create DataFrame with results
-    df_output = pd.DataFrame(results, columns=["Input", "Output", "Provenance"])
-    
-    # Add metadata
-    df_output['Relationship'] = relationship_line
-    
-    # Save to CSV
-    df_output.to_csv(output_path, index=False)
-    
-    # Log summary
-    provenance_counts = df_output['Provenance'].value_counts().to_dict()
-    log_error(f"Transformation complete. Results by source: {provenance_counts}")
-    
-    return output_path
+            log_error(f"Error processing value '{val}': {str(e)}")
+            outputs.append(str(val) if pd.notna(val) else "")
+            provenances.append("processing_error")
+            
+    log_error(f"Finished processing {len(new_input_series)} inputs.")
+    return {'success': True, 'outputs': outputs, 'provenances': provenances, 'relationship': relationship_line}
 
 def apply_transformation_main(data_info):
     try:
@@ -152,6 +134,7 @@ def apply_transformation_main(data_info):
         column_to_transform = data_info['column']
         transformation_type = data_info.get('transformation_type', 'General')
         code_file_content = data_info.get('code_file_content', None)
+        transformation_details = data_info.get('transformation_details', {})
 
         # Validate data
         if not data or not isinstance(data, list):
