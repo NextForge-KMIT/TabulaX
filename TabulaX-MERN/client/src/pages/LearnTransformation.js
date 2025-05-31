@@ -474,6 +474,7 @@ const LearnTransformation = () => {
       if (response.data.success) {
         setTransformationType(response.data.transformationType);
         setTransformationCode(response.data.transformationCode || '');
+      setTransformationDetails(response.data.transformation_details || null);
         setSuccess(`Transformation classified as: ${response.data.transformationType}`);
         setActiveStep(2); // Move to the next step
       } else {
@@ -1145,8 +1146,20 @@ const LearnTransformation = () => {
                   {transformationType === 'String-based' && 'Uses string manipulation functions like splitting, case conversion, abbreviation, etc.'}
                   {transformationType === 'Numerical' && 'Applies mathematical functions to transform values.'}
                   {transformationType === 'Algorithmic' && 'Uses specific algorithms without external knowledge for transformations.'}
-                  {transformationType === 'General' && 'Requires external knowledge or complex mappings with no clear algorithmic pattern.'}
+                  {/* For General type, description is handled below if available */}
+                  {transformationType === 'General' && !(transformationDetails && transformationDetails.description) && 'This is a general transformation. The specific relationship will be determined by the AI model during execution.'}
                 </Typography>
+                {/* Display dynamic description for General transformation if available */}
+                {transformationType === 'General' && transformationDetails && transformationDetails.description && (
+                  <Box sx={{ mt: 1, p: 2, border: '1px dashed #ccc', borderRadius: 1, backgroundColor: 'rgba(230, 247, 255, 0.5)' }}> {/* Light blueish background */}
+                    <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'medium', color: '#0d47a1' }}> {/* Darker blue for title */}
+                      AI-Generated Relationship:
+                    </Typography>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: '#1565c0' }}> {/* Slightly lighter blue for text */}
+                      {transformationDetails.description}
+                    </Typography>
+                  </Box>
+                )}
               </CardContent>
             </Card>
 

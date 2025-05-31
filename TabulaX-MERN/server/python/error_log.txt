@@ -1,36 +1,5 @@
 Starting generate_general_transformation with transformation_details
 Found 5 valid source-target pairs from transformation_details
 Created lookup table with 5 entries from transformation_details
-Error detecting relationship: 404 models/gemini-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
-LLM inference error for 'Justin Trudeau': 404 models/gemini-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
-LLM inference error for 'Boris Johnson': 404 models/gemini-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
-LLM inference error for 'Narendra Modi': 404 models/gemini-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
-Finished processing 3 inputs.
-Starting generate_general_transformation with transformation_details
-Found 5 valid source-target pairs from transformation_details
-Created lookup table with 5 entries from transformation_details
-Error detecting relationship: 404 models/gemini-1.0-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
-LLM inference error for 'Justin Trudeau': 404 models/gemini-1.0-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
-LLM inference error for 'Boris Johnson': 404 models/gemini-1.0-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
-LLM inference error for 'Narendra Modi': 404 models/gemini-1.0-pro is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.
-Finished processing 3 inputs.
-Starting generate_general_transformation with transformation_details
-Found 5 valid source-target pairs from transformation_details
-Created lookup table with 5 entries from transformation_details
 Detected relationship: Person to Country
-Finished processing 3 inputs.
-Starting generate_general_transformation with transformation_details
-Found 5 valid source-target pairs from transformation_details
-Created lookup table with 5 entries from transformation_details
-Detected relationship: Person to Country
-Finished processing 3 inputs.
-Starting generate_general_transformation with transformation_details
-Found 5 valid source-target pairs from transformation_details
-Created lookup table with 5 entries from transformation_details
-Detected relationship: Person to Country
-Finished processing 3 inputs.
-Starting generate_general_transformation with transformation_details
-Found 5 valid source-target pairs from transformation_details
-Created lookup table with 5 entries from transformation_details
-Detected relationship: Person to Country
-Finished processing 3 inputs.
+Finished processing 0 inputs.

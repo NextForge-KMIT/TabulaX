@@ -8,6 +8,7 @@ import traceback
 import google.generativeai as genai
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import HumanMessage
+from apply_transformation import generate_general_transformation
 
 
 # Set your Gemini API key here or ensure it's in the environment variable GOOGLE_API_KEY
@@ -53,7 +54,38 @@ def classify_transformation_main(data_info):
         # Perform classification
         transformation_type = classify_transformation(source_series, target_series, llm)
         transformation_code = None
-        if transformation_type == "Numerical":
+        transformation_details_for_response = None
+        description = None
+
+        if transformation_type == "General":
+            # For General type, get description from apply_transformation.generate_general_transformation
+            source_examples = source_data[:10] # Use first 10 examples, or adjust as needed
+            target_examples = target_data[:10]
+            
+            # Construct details needed by generate_general_transformation
+            # Ensure this matches the structure expected by generate_general_transformation
+            current_transformation_details_for_general = {
+                "sourceExamples": source_examples,
+                "targetExamples": target_examples,
+                # Add any other fields generate_general_transformation might expect from transformation_details
+            }
+            
+            # We pass an empty Series for new_input_series as we only want the relationship description here.
+            # The llm instance is already initialized in classify_transformation_main.
+            general_result = generate_general_transformation(current_transformation_details_for_general, pd.Series([], dtype='object'), llm)
+            
+            if general_result and general_result.get('success'):
+                description = general_result.get('relationship', "General transformation identified. Specifics to be determined during application.")
+            else:
+                description = "Failed to determine relationship for General transformation."
+                log_error(f"generate_general_transformation failed or returned no description. Result: {general_result}")
+            
+            transformation_details_for_response = {"description": description}
+            # For 'General' type, the transformation_code is essentially a comment pointing to the description
+            # as the actual transformation is handled by the LLM in apply_transformation.
+            transformation_code = f"## General Transformation - Logic applied via LLM ##\n# Description: {description}\n# This transformation is handled by a generative model based on the provided examples."
+
+        elif transformation_type == "Numerical":
             transformation_code = generate_numerical_transformation(source_series, target_series)
         elif transformation_type == "String-based":
             transformation_code = generate_string_transformation(source_series, target_series, llm)
@@ -61,8 +93,10 @@ def classify_transformation_main(data_info):
             transformation_code = generate_algorithmic_transformation(source_series, target_series, llm)
 
         result = {
+            "success": True,
             "transformation_type": transformation_type,
-            "transformation_code": transformation_code
+            "transformation_code": transformation_code,
+            "transformation_details": transformation_details_for_response
         }
         return result
     except Exception as e:
@@ -75,119 +109,64 @@ def classify_transformation_main(data_info):
 
 def classify_transformation(source_series, target_series, llm):
     """
-    Classify transformation between source and target columns using prompt-based LLM only.
-    Categories:
-    - String-based
-    - Numerical
-    - Algorithmic
-    - General
+    Classify transformation type between source and target columns using an LLM.
+    Returns only the transformation type string.
     """
     source_target_pairs = list(zip(source_series.head(5), target_series.head(5)))
     examples = [f'("{s}" -> "{t}")' for s, t in source_target_pairs]
     serialized_examples = ', '.join(examples)
-    prompt = f"""I need you to classify the transformation type between source and target values based on TabulaX framework.
 
-                    The transformation classes are:
-                    1. String-based: Uses string manipulation functions like splitting, case conversion, abbreviation, etc.
-                        Examples: Converting full names to initials, extracting email usernames, formatting phone numbers.
+    prompt = f"""You are an expert transformation classifier for the TabulaX framework.
+    Your task is to classify the transformation type between source and target values.
+    Output your response in JSON format with a single key: "transformation_type".
 
-                    2. Numerical: Applies mathematical functions to transform values.
-                        Examples: Unit conversions, scaling values, currency conversions, mathematical operations.
+    The transformation classes are:
+    1. String-based: Uses string manipulation functions like splitting, case conversion, abbreviation, etc.
+    2. Numerical: Applies mathematical functions to transform values.
+    3. Algorithmic: Uses specific algorithms without external knowledge for transformations.
+    4. General: Requires external knowledge, complex mappings, or context-dependent logic.
 
-                    3. Algorithmic: Uses specific algorithms without external knowledge for transformations.
-                        Examples: Converting between date formats, hashing, encoding/decoding, character-to-ASCII conversion.
+    Analyze the following examples of source to target transformations:
+    {serialized_examples}
 
-                    4. General: Requires external knowledge or complex mappings with no clear algorithmic pattern.
-                        Examples: Company names to CEOs, countries to capitals, entities to categories, airport codes to cities.
+    Based on these examples, determine the most appropriate transformation_type.
+    Respond ONLY with a valid JSON object. For example:
+    {{"transformation_type": "String-based"}}
+    {{"transformation_type": "Numerical"}}
+    {{"transformation_type": "Algorithmic"}}
+    {{"transformation_type": "General"}}
+    """
 
-                    Labeled examples:
-                    ("john smith" -> "J. Smith") => String-based
-                    ("michael jordan" -> "M. Jordan") => String-based
-                    ("hello world" -> "Hello World") => String-based (title case)
-                    ("The quick brown fox" -> "the-quick-brown-fox") => String-based (slugify)
-                    ("data_science" -> "Data Science") => String-based (underscore to words)
-                    ("OpenAI GPT" -> "openai-gpt") => String-based (kebab-case)
-                    ("ChatGPT" -> "chatgpt") => String-based (lowercase)
-                    ("ChatGPT" -> "CHATGPT") => String-based (uppercase)
-                    ("Innovation!" -> "innovation") => String-based (strip punctuation, lowercase)
-                    ("2025 Project" -> "project_2025") => String-based (reordered and underscored)
-                    ("Pranav Kumar" -> "pranav.kumar") => String-based (email-style username)
-
-                    ("5" -> "25") => Numerical
-                    ("12" -> "144") => Numerical
-                    ("9" -> "81") => Numerical
-                    ("100" -> "10") => Numerical (log base 10)
-                    ("8" -> "2.828") => Numerical (square root, approx)
-                    ("15" -> "1111") => Numerical (binary)
-                    ("255" -> "FF") => Numerical (hexadecimal)
-                    ("20" -> "0x14") => Numerical (hex notation)
-                    ("42" -> "2a") => Numerical (hex value)
-                    ("10" -> "1e+01") => Numerical (scientific notation)
-
-                    ("@" -> "64") => Algorithmic (ASCII code)
-                    ("A" -> "41") => Algorithmic (Hex encoding)
-                    ("42" -> "2a") => Algorithmic (Hex encoding)
-                    ("AB" -> "01000001 01000010") => Algorithmic (Binary encoding)
-                    ("Z" -> "132") => Algorithmic (ROT13 encoding)
-                    ("hello" -> "ifmmp") => Algorithmic (Caesar cipher +1)
-                    ("1234" -> "4321") => Algorithmic (Reverse digits)
-                    ("racecar" -> "true") => Algorithmic (Palindrome check)
-                    ("2025-05-03" -> "1746230400") => Algorithmic (date to timestamp)
-                    ("2024-01-01" -> "Monday") => Algorithmic (date to weekday)
-                    ("data" -> "3a6eb078748d3c66e5ba8bc9b1c6cf4f") => Algorithmic (MD5 hash)
-                    ("hello" -> "5d41402abc4b2a76b9719d911017c592") => Algorithmic (MD5 hash)
-                    ("test" -> "dGVzdA==") => Algorithmic (Base64 encoding)
-                    ("openai" -> "b3BlbmFp") => Algorithmic (Base64 encoding)
-                    ("1445-09-01" -> "2024-03-11") => Algorithmic (Hijri to Gregorian date)
-                    ("5" -> "101") => Algorithmic (Decimal to binary)
-                    ("255" -> "11111111") => Algorithmic (Decimal to binary)
-                    ("apple" -> "ecbb3b5a") => Algorithmic (FNV-1a hash)
-                    ("🔒" -> "1F512") => Algorithmic (Unicode code point)
-
-                    ("Einstein" -> "Scientist") => General (person to profession)
-                    ("Newton" -> "Physicist") => General (person to profession)
-                    ("Beethoven" -> "Composer") => General (person to profession)
-                    ("Whale" -> "Mammal") => General (animal to category)
-                    ("Eagle" -> "Bird") => General (animal to category)
-                    ("Shark" -> "Fish") => General (animal to category)
-                    ("Japan" -> "Tokyo") => General (country to capital)
-                    ("India" -> "New Delhi") => General (country to capital)
-                    ("Brazil" -> "Brasília") => General (country to capital)
-                    ("Tesla" -> "Elon Musk") => General (company to CEO)
-                    ("Apple" -> "Tim Cook") => General (company to CEO)
-                    ("Google" -> "Sundar Pichai") => General (company to CEO)
-                    ("Python" -> "Programming Language") => General (term to type)
-                    ("Amazon" -> "E-commerce Platform") => General (company to industry)
-                    ("Venus" -> "Planet") => General (entity to category)
-                    ("Mount Everest" -> "Mountain") => General (landform to type)
-                    ("USD" -> "United States Dollar") => General (currency code to name)
-
-
-                    Now classify this transformation based on the following examples:
-                    {serialized_examples}
-
-                    Return only one of these four categories:
-                    "String-based", "Numerical", "Algorithmic", or "General"
-                    """
-    
     # Use the appropriate method based on the LLM type
     if hasattr(llm, 'invoke'):
-        # LangChain interface
         response = llm.invoke([HumanMessage(content=prompt)])
-        result = response.content.strip()
+        result_text = response.content
     else:
-        # Direct Google Generative AI interface
         response = llm.generate_content(prompt)
-        result = response.text.strip() if hasattr(response, 'text') else str(response).strip()
+        result_text = response.text if hasattr(response, 'text') else str(response)
+    
+    try:
+        cleaned_result_text = result_text.strip()
+        if cleaned_result_text.startswith('```json'):
+            cleaned_result_text = cleaned_result_text[len('```json'):].strip()
+        if cleaned_result_text.startswith('```'):
+            cleaned_result_text = cleaned_result_text[len('```'):].strip()
+        if cleaned_result_text.endswith('```'):
+            cleaned_result_text = cleaned_result_text[:-len('```')].strip()
 
-    if "String-based" in result:
-        return "String-based"
-    elif "Numerical" in result:
-        return "Numerical"
-    elif "Algorithmic" in result:
-        return "Algorithmic"
-    else:
-        return "General"
+        parsed_result = json.loads(cleaned_result_text)
+        transformation_type = parsed_result.get("transformation_type", "General") # Default to General
+        return transformation_type
+    except json.JSONDecodeError as je:
+        log_error(f"JSONDecodeError in classify_transformation: {str(je)}. Raw: {result_text}")
+        # Basic fallback if JSON parsing fails
+        if "String-based" in result_text: return "String-based"
+        if "Numerical" in result_text: return "Numerical"
+        if "Algorithmic" in result_text: return "Algorithmic"
+        return "General" # Fallback to General
+    except Exception as e:
+        log_error(f"Error in classify_transformation: {str(e)}. Raw: {result_text}")
+        return "General" # Fallback to General
 
 def generate_numerical_transformation(source_series, target_series):
     source_nums = pd.to_numeric(source_series)
