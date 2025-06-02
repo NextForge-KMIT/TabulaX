@@ -16,6 +16,10 @@ import {
 import SchoolIcon from '@mui/icons-material/School';
 import ApplyIcon from '@mui/icons-material/PlayArrow';
 import SavedIcon from '@mui/icons-material/Bookmark';
+import InsightsIcon from '@mui/icons-material/Insights'; // Or other suitable icon for dashboard welcome
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'; // For About section
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { alpha } from '@mui/material/styles';
 import { useAuth } from '../context/AuthContext';
 
 const Dashboard = () => {
@@ -60,24 +64,29 @@ const Dashboard = () => {
       </Box>
 
       <Paper
-        elevation={4} // Slightly increased elevation
+        elevation={6} // Increased elevation for better theme-adaptive shadow
         sx={{
-          p: { xs: 3, md: 4 }, // Responsive padding
-          mb: 5, // Increased margin bottom
-          borderRadius: 3, // Softer border radius
+          p: { xs: 3, md: 5 }, // Slightly increased padding
+          mb: 5, 
+          borderRadius: 3, 
           background: (theme) => `linear-gradient(135deg, ${theme.palette.primary.light} 0%, ${theme.palette.primary.main} 100%)`,
-          color: 'primary.contrastText',
-          boxShadow: '0px 8px 25px rgba(0, 0, 0, 0.1)',
+          color: (theme) => theme.palette.primary.contrastText, 
+          display: 'flex',
+          alignItems: 'center',
         }}
       >
-        <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 600 }}>
-          Hello, {user?.username || 'User'}!
-        </Typography>
-        <Typography variant="body1" sx={{ opacity: 0.9 }}>
-          Welcome to your TabulaX dashboard. Here you can access all the tools to streamline your data transformation tasks.
-        </Typography>
+        <InsightsIcon sx={{ fontSize: { xs: '2.5rem', md: '3rem' }, mr: 2, opacity: 0.8 }} />
+        <div>
+          <Typography variant="h4" component="h2" gutterBottom sx={{ fontWeight: 600, mb: 0.5 }}>
+            Hello, {user?.username || 'User'}!
+          </Typography>
+          <Typography variant="body1" sx={{ opacity: 0.9 }}>
+            Welcome to your TabulaX dashboard. Here you can access all the tools to streamline your data transformation tasks.
+          </Typography>
+        </div>
       </Paper>
 
+      <Divider sx={{ my: 5 }} />
       <Typography variant="h3" component="h2" gutterBottom sx={{ mb: 4, fontWeight: 700, color: 'primary.dark', textAlign: 'center' }}>
         Key Features
       </Typography>
@@ -97,8 +106,25 @@ const Dashboard = () => {
                 }
               }}
             >
-              <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
-                {feature.icon}
+              <Box sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                pt: 3, // Add padding top to the card for the icon circle
+                pb: 1
+              }}>
+                <Box sx={{
+                  p: 2.5, // Padding inside the circle
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  bgcolor: (theme) => alpha(theme.palette.secondary.main, 0.1),
+                  borderRadius: '50%',
+                  width: { xs: 60, md: 70 }, // Responsive size for the circle
+                  height: { xs: 60, md: 70 },
+                }}>
+                  {React.cloneElement(feature.icon, { sx: { fontSize: { xs: '2rem', md: '2.5rem' }, color: 'secondary.main' } })}
+                </Box>
               </Box>
               <CardContent sx={{ flexGrow: 1 }}>
                 <Typography gutterBottom variant="h5" component="h3" align="center" sx={{ fontWeight: 600, color: 'primary.dark' }}>
@@ -115,6 +141,8 @@ const Dashboard = () => {
                   fullWidth
                   component={RouterLink} 
                   to={feature.link}
+                  endIcon={<ArrowForwardIcon />}
+                  sx={{ py: 1.2, mt: 1 }} // Add some top margin to button
                 >
                   {feature.buttonText}
                 </Button>
@@ -124,20 +152,35 @@ const Dashboard = () => {
         ))}
       </Grid>
 
-      <Box sx={{ mt: 6, mb: 2 }}>
-        <Divider />
-        <Typography variant="h5" component="h2" gutterBottom sx={{ mt: 4 }}>
-          About TabulaX
+      <Divider sx={{ my: 5 }} />
+      <Paper 
+        elevation={3}
+        sx={{
+          p: { xs: 2, md: 3 }, 
+          mt: 5, 
+          mb: 4,
+          borderRadius: 2,
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? alpha(theme.palette.background.paper, 0.7) : theme.palette.background.default, // Subtle background
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <InfoOutlinedIcon sx={{ mr: 1.5, color: 'secondary.main', fontSize: '1.75rem' }} />
+          <Typography variant="h5" component="h2" sx={{ fontWeight: 600, color: 'primary.dark' }}>
+            About TabulaX
+          </Typography>
+        </Box>
+        <Typography variant="body1" paragraph sx={{ color: 'text.secondary', lineHeight: 1.7 }}>
+          TabulaX is a powerful tool designed to simplify and accelerate your data transformation and joining tasks. 
+          By leveraging intelligent algorithms, it automatically understands and generates the necessary transformations 
+          between columns, making your data preparation workflow significantly faster and more efficient.
         </Typography>
-        <Typography variant="body1" paragraph>
-          TabulaX is a powerful tool for data transformation and joining. It uses machine learning to understand and 
-          generate transformations between columns, making data preparation faster and more efficient.
+        <Typography variant="body1" paragraph sx={{ color: 'text.secondary', lineHeight: 1.7, mb: 0 }}>
+          With seamless support for a variety of data sources including CSV, Excel, MySQL, and MongoDB, TabulaX 
+          is your comprehensive solution for streamlining complex data processing challenges.
         </Typography>
-        <Typography variant="body1" paragraph>
-          With support for various data sources including CSV, Excel, MySQL, and MongoDB, TabulaX streamlines 
-          your data processing workflow.
-        </Typography>
-      </Box>
+        {/* Optional: Add a Learn More button here if desired in the future */}
+        {/* <Button variant="outlined" component={RouterLink} to="/about-us-page" sx={{ mt: 2 }}>Learn More</Button> */}
+      </Paper>
     </Container>
   );
 };

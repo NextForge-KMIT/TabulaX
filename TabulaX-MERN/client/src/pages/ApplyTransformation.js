@@ -399,17 +399,78 @@ const ApplyTransformation = () => {
                 ))}
               </Select>
             </FormControl>
-            {loading && <CircularProgress size={24} sx={{ ml: 2 }} />}
+            {loading && !transformationDetails && <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}><CircularProgress /></Box>}
             {transformationDetails && (
-              <Paper elevation={2} sx={{ p: 2, mt: 2, backgroundColor: theme.palette.mode === 'dark' ? '#333' : '#f9f9f9' }}>
-                <Typography variant="subtitle1" gutterBottom>Transformation Details:</Typography>
-                <Typography variant="body2"><strong>Name:</strong> {transformationDetails.name}</Typography>
-                <Typography variant="body2"><strong>Type:</strong> {transformationDetails.transformationType}</Typography>
-                <Typography variant="body2" sx={{ mt: 1 }}><strong>Code:</strong></Typography>
-                <SyntaxHighlighter language="python" style={vscDarkPlus} customStyle={{ maxHeight: '200px', overflowY: 'auto', fontSize: '0.8rem' }}>
-                  {transformationDetails.transformationCode || "// No code available"}
-                </SyntaxHighlighter>
-              </Paper>
+              <Card elevation={2} sx={{ mt: 3 }}>
+                <CardHeader 
+                  title={transformationDetails.name || 'Transformation Details'}
+                  subheader={`Type: ${transformationDetails.transformationType || 'N/A'}`}
+                />
+                <CardContent>
+                  {/* Description Section */}
+                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>Description:</Typography>
+                  {transformationDetails.transformationType === 'General' && transformationDetails.description ? (
+                    <Box sx={{
+                      p: 1.5,
+                      mb: 2,
+                      borderRadius: 1,
+                      backgroundColor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.dark, 0.2) : alpha(theme.palette.primary.light, 0.2),
+                      border: `1px solid ${theme.palette.mode === 'dark' ? theme.palette.primary.dark : theme.palette.primary.light}`
+                    }}>
+                      <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                        {transformationDetails.description}
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" paragraph sx={{ color: transformationDetails.description ? 'text.primary' : 'text.secondary' }}>
+                      {transformationDetails.description || 'No description provided.'}
+                    </Typography>
+                  )}
+
+                  <Divider sx={{ my: 2 }} />
+
+                  {/* Code Section */}
+                  {transformationDetails.transformationCode && (
+                    <Box mb={2}>
+                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>Transformation Logic/Code:</Typography>
+                      <SyntaxHighlighter 
+                        language="python" 
+                        style={vscDarkPlus} 
+                        customStyle={{ maxHeight: '200px', overflowY: 'auto', fontSize: '0.8rem', borderRadius: '4px' }}
+                        showLineNumbers
+                      >
+                        {transformationDetails.transformationCode}
+                      </SyntaxHighlighter>
+                    </Box>
+                  )}
+                  
+                  {/* Examples Section */}
+                  {transformationDetails.sourceExamples && transformationDetails.sourceExamples.length > 0 && (
+                    <Box>
+                      <Divider sx={{ my: 2 }} />
+                      <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>Examples:</Typography>
+                      <TableContainer component={Paper} elevation={1} sx={{ maxHeight: 200 }}>
+                        <Table stickyHeader size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell sx={{ fontWeight: 'medium' }}>Source Example</TableCell>
+                              <TableCell sx={{ fontWeight: 'medium' }}>Target Example</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {transformationDetails.sourceExamples.map((source, index) => (
+                              <TableRow key={index}>
+                                <TableCell>{source}</TableCell>
+                                <TableCell>{transformationDetails.targetExamples?.[index] || ''}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
             )}
           </Box>
         );
@@ -532,11 +593,13 @@ const ApplyTransformation = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Paper elevation={3} sx={{ p: { xs: 2, md: 4 } }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 3 }}>
-          Apply Transformation
-        </Typography>
+      {/* Page Title - Moved outside the main Paper */}
+      <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ fontWeight: 'bold', mb: 3 }}>
+        Apply Transformation
+      </Typography>
 
+      {/* Main content area with Stepper and Steps */}
+      <Paper elevation={3} sx={{ p: { xs: 2, md: 4 } }}>
         <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
           {steps.map((label) => (
             <Step key={label}>

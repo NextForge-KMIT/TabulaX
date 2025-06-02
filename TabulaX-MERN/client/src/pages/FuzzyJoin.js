@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
-  Box, Typography, Button, TextField, Paper, Grid, MenuItem, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Alert
+  Container, Box, Typography, Button, TextField, Paper, Grid, MenuItem, Table, TableHead, TableRow, TableCell, TableBody, CircularProgress, Alert, Divider
 } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
 import Papa from 'papaparse';
+import { useDropzone } from 'react-dropzone';
 
 const transformationClasses = [
   { value: 'String-based', label: 'String-based' },
@@ -35,13 +36,46 @@ const FuzzyJoin = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleFileChange = (setter, dataSetter) => (e) => {
-    const file = e.target.files[0];
+  // Dropzone handlers
+  const onDropSource = React.useCallback(acceptedFiles => {
+    const file = acceptedFiles[0];
     if (file) {
-      setter(file);
-      parseCSVFile(file, dataSetter);
+      setSourceFile(file);
+      parseCSVFile(file, setSourceData);
     }
-  };
+  }, []);
+
+  const { getRootProps: getSourceRootProps, getInputProps: getSourceInputProps, isDragActive: isSourceDragActive } = useDropzone({
+    onDrop: onDropSource,
+    accept: {
+      'text/csv': ['.csv'],
+    },
+    multiple: false
+  });
+
+  const onDropTarget = React.useCallback(acceptedFiles => {
+    const file = acceptedFiles[0];
+    if (file) {
+      setTargetFile(file);
+      parseCSVFile(file, setTargetData);
+    }
+  }, []);
+
+  const { getRootProps: getTargetRootProps, getInputProps: getTargetInputProps, isDragActive: isTargetDragActive } = useDropzone({
+    onDrop: onDropTarget,
+    accept: {
+      'text/csv': ['.csv'],
+    },
+    multiple: false
+  });
+
+  // const handleFileChange = (setter, dataSetter) => (e) => {
+  //   const file = e.target.files[0];
+  //   if (file) {
+  //     setter(file);
+  //     parseCSVFile(file, dataSetter);
+  //   }
+  // };
 
   const getColumnOptions = (data) => {
     if (!data.length) return [];
@@ -122,22 +156,45 @@ const FuzzyJoin = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
-      <Typography variant="h4" gutterBottom>Fuzzy Join</Typography>
-      <Paper sx={{ p: 3, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Typography variant="h3" component="h1" gutterBottom textAlign="center">
+        Fuzzy Join Tool
+      </Typography>
+      <Typography variant="h6" color="text.secondary" paragraph textAlign="center" sx={{ mb: 4 }}>
+        Upload source and target CSV files, select columns, and configure parameters to perform a fuzzy join.
+      </Typography>
+      <Paper elevation={3} sx={{ p: { xs: 2, md: 3 }, mb: 3 }}>
         <form onSubmit={handleSubmit}>
-          <Grid container spacing={2}>
+          <Typography variant="h5" component="h2" gutterBottom sx={{ mb: 2, mt: 1, fontWeight: 500 }}>
+            1. Upload Data Files
+          </Typography>
+          <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} md={6}>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<UploadFileIcon />}
-                fullWidth
+              <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 400, color: 'text.secondary', mb:1.5 }}>Source Data</Typography>
+              <Paper
+                {...getSourceRootProps()}
+                variant="outlined"
+                sx={{
+                  p: 3,
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  borderStyle: 'dashed',
+                  borderColor: isSourceDragActive ? 'primary.main' : 'grey.500',
+                  backgroundColor: isSourceDragActive ? 'action.hover' : 'transparent',
+                  '&:hover': {
+                    borderColor: 'primary.light',
+                  }
+                }}
               >
-                Upload Source CSV
-                <input type="file" accept=".csv" hidden onChange={handleFileChange(setSourceFile, setSourceData)} />
-              </Button>
-              {sourceFile && <Typography variant="body2">{sourceFile.name}</Typography>}
+                <input {...getSourceInputProps()} />
+                <UploadFileIcon sx={{ fontSize: 40, mb: 1, color: 'grey.600' }} />
+                {isSourceDragActive ? (
+                  <Typography>Drop the source file here ...</Typography>
+                ) : (
+                  <Typography>Drag 'n' drop source CSV here, or click to select</Typography>
+                )}
+                {sourceFile && <Typography variant="body2" sx={{ mt: 1 }}>Selected: {sourceFile.name}</Typography>}
+              </Paper>
               {sourceData.length > 0 && (
                 <TextField
                   select
@@ -154,17 +211,31 @@ const FuzzyJoin = () => {
               )}
             </Grid>
             <Grid item xs={12} md={6}>
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<UploadFileIcon />}
-                fullWidth
-                color="secondary"
+              <Typography variant="h6" component="h3" gutterBottom sx={{ fontWeight: 400, color: 'text.secondary', mb:1.5 }}>Target Data</Typography>
+              <Paper
+                {...getTargetRootProps()}
+                variant="outlined"
+                sx={{
+                  p: 3,
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  borderStyle: 'dashed',
+                  borderColor: isTargetDragActive ? 'primary.main' : 'grey.500',
+                  backgroundColor: isTargetDragActive ? 'action.hover' : 'transparent',
+                  '&:hover': {
+                    borderColor: 'primary.light',
+                  }
+                }}
               >
-                Upload Target CSV
-                <input type="file" accept=".csv" hidden onChange={handleFileChange(setTargetFile, setTargetData)} />
-              </Button>
-              {targetFile && <Typography variant="body2">{targetFile.name}</Typography>}
+                <input {...getTargetInputProps()} />
+                <UploadFileIcon sx={{ fontSize: 40, mb: 1, color: 'grey.600' }} />
+                {isTargetDragActive ? (
+                  <Typography>Drop the target file here ...</Typography>
+                ) : (
+                  <Typography>Drag 'n' drop target CSV here, or click to select</Typography>
+                )}
+                {targetFile && <Typography variant="body2" sx={{ mt: 1 }}>Selected: {targetFile.name}</Typography>}
+              </Paper>
               {targetData.length > 0 && (
                 <TextField
                   select
@@ -180,7 +251,15 @@ const FuzzyJoin = () => {
                 </TextField>
               )}
             </Grid>
-            <Grid item xs={12} md={4}>
+          </Grid>
+
+          <Divider sx={{ my: 3 }} />
+
+          <Typography variant="h5" component="h2" gutterBottom sx={{ mb: 2, fontWeight: 500 }}>
+            2. Configure Join Parameters
+          </Typography>
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid item xs={12} sm={6} md={4}>
               <TextField
                 select
                 label="Transformation Class"
@@ -205,8 +284,12 @@ const FuzzyJoin = () => {
                 inputProps={{ min: 0 }}
               />
             </Grid>
-            <Grid item xs={12} md={4} sx={{ display: 'flex', alignItems: 'center' }}>
-              <Button
+          </Grid>
+
+          <Divider sx={{ mt: 4, mb: 3 }} />
+
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', maxWidth: 'sm', mx: 'auto' }}>
+            <Button
                 type="submit"
                 variant="contained"
                 color="primary"
@@ -215,13 +298,12 @@ const FuzzyJoin = () => {
               >
                 {loading ? <CircularProgress size={24} /> : 'Run Fuzzy Join'}
               </Button>
-            </Grid>
-          </Grid>
+          </Box>
         </form>
         {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
       </Paper>
       {result && (
-        <Paper sx={{ p: 2 }}>
+        <Paper elevation={3} sx={{ p: { xs: 2, md: 3 }, mt: 3 }}>
           <Typography variant="h6" gutterBottom>Join Results</Typography>
           <Box sx={{ overflowX: 'auto' }}>
             <Table size="small">
@@ -256,7 +338,7 @@ const FuzzyJoin = () => {
           )}
         </Paper>
       )}
-    </Box>
+    </Container>
   );
 };
 

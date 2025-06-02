@@ -28,6 +28,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import LinkIcon from '@mui/icons-material/Link';
 import { useAuth } from '../context/AuthContext';
+import ThemeToggleButton from './ThemeToggleButton';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -151,6 +152,9 @@ const Navbar = () => {
               ))}
             </Box>
           )}
+
+          {/* Theme Toggle Button - Placed before User Menu/Login buttons for consistent positioning */}
+          <ThemeToggleButton />
 
           {/* User menu */}
           {isAuthenticated ? (

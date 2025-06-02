@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -9,11 +9,17 @@ import {
   Paper,
   Link,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Avatar,
+  Grid,
+  Divider
 } from '@mui/material';
+import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
+
 import { useAuth } from '../context/AuthContext';
 
 const Register = () => {
+  const { register: appRegister, isAuthenticated, error: authError } = useAuth(); // Renamed to avoid conflict
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -23,7 +29,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
-  const { register, isAuthenticated, error } = useAuth();
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -35,10 +41,10 @@ const Register = () => {
 
   useEffect(() => {
     // Set error message from auth context
-    if (error) {
-      setErrorMessage(error);
+    if (authError) {
+      setErrorMessage(authError);
     }
-  }, [error]);
+  }, [authError]);
 
   const handleChange = (e) => {
     setFormData({
@@ -72,7 +78,7 @@ const Register = () => {
     }
 
     // Attempt registration
-    const success = await register({
+    const success = await appRegister({
       username: formData.username,
       email: formData.email,
       password: formData.password
@@ -84,94 +90,100 @@ const Register = () => {
   };
 
   return (
-    <Container component="main" maxWidth="sm" sx={{ mb: 4 }}>
-      <Paper
-        elevation={3}
+    <Container component="main" maxWidth="xs">
+      <Paper 
+        elevation={6} 
         sx={{
-          my: { xs: 3, md: 6 },
-          p: { xs: 2, md: 3 },
-          borderRadius: 2
+          marginTop: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: 4,
+          borderRadius: 2,
         }}
       >
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
-          <Typography component="h1" variant="h4" sx={{ mb: 3 }}>
-            Create an Account
-          </Typography>
-          
-          {errorMessage && (
-            <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
-              {errorMessage}
-            </Alert>
-          )}
-          
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="username"
-              label="Username"
-              name="username"
-              autoComplete="username"
-              autoFocus
-              value={formData.username}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="email"
-              label="Email Address"
-              name="email"
-              autoComplete="email"
-              value={formData.email}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="new-password"
-              value={formData.password}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="confirmPassword"
-              label="Confirm Password"
-              type="password"
-              id="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2, py: 1.5 }}
-              disabled={loading}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Sign Up'}
-            </Button>
-            <Box sx={{ textAlign: 'center' }}>
+        <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
+          <PersonAddOutlinedIcon />
+        </Avatar>
+        <Typography component="h1" variant="h5" sx={{ mb: 2}}>
+          Sign up for TabulaX
+        </Typography>
+
+        {errorMessage && (
+          <Alert severity={authError ? "error" : "info"} sx={{ width: '100%', mb: 2 }}>
+            {errorMessage}
+          </Alert>
+        )}
+
+        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1, width: '100%' }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="username"
+            label="Username"
+            name="username"
+            autoComplete="username"
+            autoFocus
+            value={formData.username}
+            onChange={handleChange}
+            sx={{ mb: 1 }}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            id="email"
+            label="Email Address"
+            name="email"
+            autoComplete="email"
+            value={formData.email}
+            onChange={handleChange}
+            sx={{ mb: 1 }}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="password"
+            label="Password (min. 6 characters)"
+            type="password"
+            id="password"
+            autoComplete="new-password"
+            value={formData.password}
+            onChange={handleChange}
+            sx={{ mb: 1 }}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            name="confirmPassword"
+            label="Confirm Password"
+            type="password"
+            id="confirmPassword"
+            autoComplete="new-password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            sx={{ mb: 1 }}
+          />
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 2, mb: 2, py: 1.2 }}
+            disabled={loading}
+          >
+            {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign Up'}
+          </Button>
+
+          <Grid container justifyContent="flex-end">
+            <Grid item>
               <Link component={RouterLink} to="/login" variant="body2">
                 {"Already have an account? Sign In"}
               </Link>
-            </Box>
-          </Box>
+            </Grid>
+          </Grid>
         </Box>
       </Paper>
     </Container>

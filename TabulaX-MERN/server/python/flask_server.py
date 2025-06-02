@@ -25,27 +25,27 @@ logger = logging.getLogger(__name__)
 
 
 
-NGROK_BASE_URL = "https://743e-34-143-229-65.ngrok-free.app/" 
-def classify_llm(data):
-    try:
-        response = requests.post(f"{NGROK_BASE_URL}/classify", json=data, timeout=10)
-        response.raise_for_status() 
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error calling ngrok /classify: {e}")
-        return {'error': True, 'message': f'Failed to connect to ngrok /classify: {str(e)}'}
+# NGROK_BASE_URL = "https://743e-34-143-229-65.ngrok-free.app/" 
+# def classify_llm(data):
+#     try:
+#         response = requests.post(f"{NGROK_BASE_URL}/classify", json=data, timeout=10)
+#         response.raise_for_status() 
+#         return response.json()
+#     except requests.exceptions.RequestException as e:
+#         logger.error(f"Error calling ngrok /classify: {e}")
+#         return {'error': True, 'message': f'Failed to connect to ngrok /classify: {str(e)}'}
 
-def transform_llm(data):
-    try:
-        response = requests.post(f"{NGROK_BASE_URL}/transform", json=data, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error calling ngrok /transform: {e}")
-        return {'error': True, 'message': f'Failed to connect to ngrok /transform: {str(e)}'}
-if USE_NGROK_SERVICES: 
-    classification_result = classify_llm(data)
-    transformation_result = transform_llm(data)
+# def transform_llm(data):
+#     try:
+#         response = requests.post(f"{NGROK_BASE_URL}/transform", json=data, timeout=10)
+#         response.raise_for_status()
+#         return response.json()
+#     except requests.exceptions.RequestException as e:
+#         logger.error(f"Error calling ngrok /transform: {e}")
+#         return {'error': True, 'message': f'Failed to connect to ngrok /transform: {str(e)}'}
+# if USE_NGROK_SERVICES: 
+#     classification_result = classify_llm(data)
+#     transformation_result = transform_llm(data)
 
 
 @app.route('/apply', methods=['POST'])

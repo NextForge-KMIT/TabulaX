@@ -38,3 +38,8 @@ Found 10 valid source-target pairs from transformation_details
 Created lookup table with 4 entries from transformation_details
 Detected relationship: State Code to Area Code
 Finished processing 0 inputs.
+Starting generate_general_transformation with transformation_details
+Found 5 valid source-target pairs from transformation_details
+Created lookup table with 5 entries from transformation_details
+Detected relationship: Person to Country
+Finished processing 0 inputs.
