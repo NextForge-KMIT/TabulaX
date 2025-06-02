@@ -12,10 +12,6 @@ const dataSourceRoutes = require('./routes/dataSourceRoutes');
 
 // Load environment variables
 dotenv.config();
-
-// Fetch from ngrok
-fetch('https://2328-34-34-69-239.ngrok-free.app');
-
 // Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 5001;

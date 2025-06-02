@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv # Added to load .env file
+import requests 
 from apply_transformation import apply_transformation_main, generate_general_transformation, log_error # Added generate_general_transformation, log_error
 from classify_transformation import classify_transformation_main
 from fuzzy_join import perform_fuzzy_join
@@ -21,6 +22,31 @@ CORS(app, resources={r"/*": {"origins": "*", "allow_headers": "*", "methods": ["
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+
+NGROK_BASE_URL = "https://743e-34-143-229-65.ngrok-free.app/" 
+def classify_llm(data):
+    try:
+        response = requests.post(f"{NGROK_BASE_URL}/classify", json=data, timeout=10)
+        response.raise_for_status() 
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error calling ngrok /classify: {e}")
+        return {'error': True, 'message': f'Failed to connect to ngrok /classify: {str(e)}'}
+
+def transform_llm(data):
+    try:
+        response = requests.post(f"{NGROK_BASE_URL}/transform", json=data, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error calling ngrok /transform: {e}")
+        return {'error': True, 'message': f'Failed to connect to ngrok /transform: {str(e)}'}
+if USE_NGROK_SERVICES: 
+    classification_result = classify_llm(data)
+    transformation_result = transform_llm(data)
+
 
 @app.route('/apply', methods=['POST'])
 def apply():

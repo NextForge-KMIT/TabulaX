@@ -13,3 +13,28 @@ Found 5 valid source-target pairs from transformation_details
 Created lookup table with 5 entries from transformation_details
 Detected relationship: Person to Country
 Finished processing 3 inputs.
+Starting generate_general_transformation with transformation_details
+Found 10 valid source-target pairs from transformation_details
+Created lookup table with 10 entries from transformation_details
+Detected relationship: Chemical Symbol to Element Name
+Finished processing 0 inputs.
+Starting generate_general_transformation with transformation_details
+Found 9 valid source-target pairs from transformation_details
+Created lookup table with 9 entries from transformation_details
+Detected relationship: ASCII Character to ASCII Decimal Value
+Finished processing 0 inputs.
+Starting generate_general_transformation with transformation_details
+Found 10 valid source-target pairs from transformation_details
+Created lookup table with 10 entries from transformation_details
+Detected relationship: IP Address to Domain Name
+Finished processing 0 inputs.
+Starting generate_general_transformation with transformation_details
+Found 10 valid source-target pairs from transformation_details
+Created lookup table with 10 entries from transformation_details
+Detected relationship: RGB color code to Color Name
+Finished processing 0 inputs.
+Starting generate_general_transformation with transformation_details
+Found 10 valid source-target pairs from transformation_details
+Created lookup table with 4 entries from transformation_details
+Detected relationship: State Code to Area Code
+Finished processing 0 inputs.
