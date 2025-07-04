@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -27,12 +27,14 @@ import SavedIcon from '@mui/icons-material/Bookmark';
 import LogoutIcon from '@mui/icons-material/Logout';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import LinkIcon from '@mui/icons-material/Link';
+import BubbleChartIcon from '@mui/icons-material/BubbleChart';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggleButton from './ThemeToggleButton';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [anchorElUser, setAnchorElUser] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -76,13 +78,14 @@ const Navbar = () => {
       onClick={toggleDrawer(false)}
       onKeyDown={toggleDrawer(false)}
     >
-      <Typography variant="h6" sx={{ my: 2, mx: 2 }}>
+      <Typography variant="h6" sx={{ my: 2, mx: 2, display: 'flex', alignItems: 'center' }}>
+        <BubbleChartIcon sx={{ mr: 1 }} />
         TabulaX
       </Typography>
       <Divider />
       <List>
         {navItems.map((item) => (
-          <ListItem button key={item.text} component={RouterLink} to={item.path}>
+          <ListItem button key={item.text} component={RouterLink} to={item.path} selected={location.pathname === item.path}>
             <ListItemIcon>{item.icon}</ListItemIcon>
             <ListItemText primary={item.text} />
           </ListItem>
@@ -92,7 +95,15 @@ const Navbar = () => {
   );
 
   return (
-    <AppBar position="static">
+    <AppBar 
+      position="sticky" 
+      elevation={0} 
+      sx={{ 
+        borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
+        backdropFilter: 'blur(8px)',
+        backgroundColor: (theme) => `${theme.palette.background.paper}80`
+      }}
+    >
       <Container maxWidth="xl">
         <Toolbar disableGutters>
           {/* Mobile menu icon */}
@@ -119,6 +130,7 @@ const Navbar = () => {
           )}
 
           {/* Logo */}
+          <BubbleChartIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1 }} />
           <Typography
             variant="h6"
             noWrap
@@ -126,7 +138,8 @@ const Navbar = () => {
             to="/"
             sx={{
               mr: 2,
-              display: 'flex',
+              display: { xs: 'flex', md: 'flex' },
+              flexGrow: { xs: 1, md: 0 },
               fontFamily: 'monospace',
               fontWeight: 700,
               letterSpacing: '.3rem',
@@ -139,13 +152,14 @@ const Navbar = () => {
 
           {/* Desktop navigation */}
           {isAuthenticated && (
-            <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
+            <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, ml: 2 }}>
               {navItems.map((item) => (
                 <Button
                   key={item.text}
                   component={RouterLink}
                   to={item.path}
-                  sx={{ my: 2, display: 'block' }}
+                  variant={location.pathname === item.path ? 'outlined' : 'text'}
+                  sx={{ my: 2, display: 'block', mx: 1 }}
                 >
                   {item.text}
                 </Button>
@@ -153,12 +167,14 @@ const Navbar = () => {
             </Box>
           )}
 
-          {/* Theme Toggle Button - Placed before User Menu/Login buttons for consistent positioning */}
+          <Box sx={{ flexGrow: 1 }} />
+
+          {/* Theme Toggle Button */}
           <ThemeToggleButton />
 
           {/* User menu */}
           {isAuthenticated ? (
-            <Box sx={{ flexGrow: 0 }}>
+            <Box sx={{ flexGrow: 0, ml: 1 }}>
               <Tooltip title="Open settings">
                 <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
                   <Avatar alt={user?.username || 'User'}>
@@ -182,19 +198,27 @@ const Navbar = () => {
                 open={Boolean(anchorElUser)}
                 onClose={handleCloseUserMenu}
               >
-                <MenuItem onClick={handleCloseUserMenu}>
-                  <Typography textAlign="center">{user?.username}</Typography>
+                <MenuItem disabled>
+                  <ListItemIcon>
+                    <AccountCircleIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>{user?.username}</ListItemText>
                 </MenuItem>
+                <Divider />
                 <MenuItem onClick={handleLogout}>
-                  <Typography textAlign="center">Logout</Typography>
+                  <ListItemIcon>
+                    <LogoutIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Logout</ListItemText>
                 </MenuItem>
               </Menu>
             </Box>
           ) : (
-            <Box sx={{ flexGrow: 0, display: 'flex' }}>
+            <Box sx={{ flexGrow: 0, display: 'flex', alignItems: 'center' }}>
               <Button
                 component={RouterLink}
                 to="/login"
+                variant='outlined'
                 sx={{ mr: 1 }}
               >
                 Login
@@ -203,9 +227,9 @@ const Navbar = () => {
                 component={RouterLink}
                 to="/register"
                 variant="contained"
-                color="secondary"
+                disableElevation
               >
-                Register
+                Sign Up
               </Button>
             </Box>
           )}

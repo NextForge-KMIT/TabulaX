@@ -3,7 +3,7 @@ const router = express.Router();
 const {
   classifyTransformation,
   applyTransformation, 
-  
+  performFuzzyJoin,
   saveTransformation,
   getUserTransformations,
   getTransformation,
@@ -26,6 +26,8 @@ const upload = multer({
 
 // Transformation learning and application routes
 router.post('/classify', protect, classifyTransformation);
+
+router.post('/fuzzy-join', protect, performFuzzyJoin);
 
 router.get('/download/:filename', protect, downloadJoinedData);
 

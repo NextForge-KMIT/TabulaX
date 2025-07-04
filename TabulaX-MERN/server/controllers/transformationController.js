@@ -113,6 +113,39 @@ exports.applyTransformation = async (req, res, next) => {
   }
 };
 
+// @desc    Perform fuzzy join
+// @route   POST /api/transformations/fuzzy-join
+// @access  Private
+exports.performFuzzyJoin = async (req, res, next) => {
+  try {
+    const flaskPayload = req.body;
+    if (!flaskPayload.source_data || !flaskPayload.target_data || !flaskPayload.join_params) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields for fuzzy join.'
+      });
+    }
+    const flaskApiUrl = process.env.FLASK_API_URL || 'http://localhost:5001';
+    const response = await axios.post(`${flaskApiUrl}/fuzzy-join`, flaskPayload);
+    if (response.data.success) {
+      // await updateStat('fuzzyJoins'); // This functionality was removed.
+      return res.status(200).json(response.data);
+    } else {
+      return res.status(response.status || 400).json({
+        success: false,
+        message: response.data.message || 'Error performing fuzzy join via Flask server',
+        details: response.data.details || null
+      });
+    }
+  } catch (error) {
+    console.error('Error calling Flask API for fuzzy-join:', error.response ? JSON.stringify(error.response.data) : error.message);
+    const err = new Error(error.response?.data?.message || 'Failed to perform fuzzy join via Flask server');
+    err.statusCode = error.response?.status || 500;
+    err.details = error.response?.data?.details;
+    return next(err);
+  }
+};
+
 // @desc    Download joined data file
 // @route   GET /api/transformations/download/:filename
 // @access  Private

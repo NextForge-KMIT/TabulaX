@@ -43,3 +43,23 @@ Found 5 valid source-target pairs from transformation_details
 Created lookup table with 5 entries from transformation_details
 Detected relationship: Person to Country
 Finished processing 0 inputs.
+Starting generate_general_transformation with transformation_details
+Found 5 valid source-target pairs from transformation_details
+Created lookup table with 5 entries from transformation_details
+Detected relationship: Person to Country
+Finished processing 7 inputs.
+Starting generate_general_transformation with transformation_details
+Found 5 valid source-target pairs from transformation_details
+Created lookup table with 5 entries from transformation_details
+Detected relationship: Person to Country
+Finished processing 3 inputs.
+Starting generate_general_transformation with transformation_details
+Found 10 valid source-target pairs from transformation_details
+Created lookup table with 10 entries from transformation_details
+Detected relationship: City to Country
+Finished processing 0 inputs.
+Starting generate_general_transformation with transformation_details
+Found 10 valid source-target pairs from transformation_details
+Created lookup table with 10 entries from transformation_details
+Detected relationship: City to Country
+Finished processing 7 inputs.
